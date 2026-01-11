@@ -10,6 +10,21 @@ test:
 	
 clean:
 	@rm -rf ./bin
+
+docker-build:
+	@docker build -t coffee:latest .
+	
+docker-run: docker-build
+	@docker run -p 8080:8080 coffee:latest
+	
+proto: proto/*.proto
+	@protoc --go_out=./proto --go-grpc_out=./proto --proto_path=./proto proto/*.proto
+	
+client-build:
+	@go build -o bin/client ./client/*.go
+	
+client-run: client-build
+	@./bin/client
 	
 
-.PHONY: build test clean
+.PHONY: build test clean proto client-build

@@ -13,12 +13,14 @@ type JsonServerHandler interface {
 }
 
 type JsonServer struct {
-	handlers map[string]JsonServerHandler
+	listenAddr string
+	handlers   map[string]JsonServerHandler
 }
 
-func NewJsonServer() *JsonServer {
+func NewJsonServer(listenAddr string) *JsonServer {
 	return &JsonServer{
-		handlers: make(map[string]JsonServerHandler),
+		listenAddr: listenAddr,
+		handlers:   make(map[string]JsonServerHandler),
 	}
 }
 
@@ -46,7 +48,7 @@ func (s *JsonServer) Run() error {
 		log.Printf("start service: %s", name)
 	}
 	log.Println("Starting JSON server on port 8080")
-	return http.ListenAndServe(":8080", nil)
+	return http.ListenAndServe(s.listenAddr, nil)
 }
 
 func WriteToJson(w http.ResponseWriter, status int, v any) error {

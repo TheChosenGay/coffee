@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+option go_package = "./coffee_service";
+
+
+service CoffeeService {
+    rpc ListCoffees(ListCoffeesRequest) returns (CoffeesResponse);
+    rpc GetCoffeeById(CoffeeByIdRequest) returns (CoffeeResponse);
+    rpc GetCoffeeByName(CoffeeByNameRequest) returns (CoffeeResponse);
+}
+
+message Coffee {
+    int32 id = 1;
+    string name = 2;
+    string cover_url = 3;
+    string category = 4;
+    string prod_location = 5;
+}
+
+
+message ListCoffeesRequest {}
+
+// list all coffees
+message CoffeesResponse {
+    repeated Coffee coffee = 1;
+}
+
+// get coffee by id
+message CoffeeByIdRequest {
+    int32 id = 1;
+}
+
+// get coffee by name
+message CoffeeByNameRequest {
+    string name = 1;
+}
+
+message CoffeeResponse {
+    Coffee coffee = 1;
+}
