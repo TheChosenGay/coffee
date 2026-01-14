@@ -122,6 +122,12 @@ func (s *WsTransport) OnConn(handler p2p.HandleConnFunc) {
 func (s *WsTransport) handleWs(ws *websocket.Conn) {
 
 	wsConn := s.conns.Get().(*WsConn)
+	if wsConn == nil {
+		log.Println("failed to get ws conn from pool")
+		return
+	}
+	wsConn.Conn = ws
+	wsConn.closeCh = make(chan struct{})
 	s.connsMap.Store(ws.RemoteAddr().String(), wsConn)
 	defer s.connsMap.Delete(ws.RemoteAddr().String())
 

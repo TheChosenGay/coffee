@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"errors"
+	"log"
 	"sync"
 
 	"github.com/TheChosenGay/coffee/p2p"
@@ -33,6 +34,7 @@ func (s *chatService) JoinChat(ctx context.Context, user types.User, conn p2p.Co
 }
 
 func (s *chatService) SendMessageToRoom(ctx context.Context, roomId int, message *chat_service.Message) error {
+	log.Printf("user %d sending message to room %d", message.SenderId, roomId)
 	room, err := s.roomStore.GetRoom(ctx, roomId)
 	if err != nil {
 		return err
@@ -53,6 +55,7 @@ func (s *chatService) SendMessageToRoom(ctx context.Context, roomId int, message
 }
 
 func (s *chatService) SendMessageToUser(ctx context.Context, targetUserId int, message *chat_service.Message) error {
+	log.Printf("sending message to user %d", targetUserId)
 	_, err := s.userStore.GetUser(ctx, targetUserId)
 	if err != nil {
 		return err

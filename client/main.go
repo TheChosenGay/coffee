@@ -5,10 +5,15 @@ import (
 	"log"
 	"time"
 
+	"github.com/TheChosenGay/coffee/client/chat"
 	"github.com/TheChosenGay/coffee/client/coffee"
 )
 
 func main() {
+	chat.RunWsUserClient()
+}
+
+func runGrpcCoffeeClient() {
 	coffeeClient := coffee.NewCoffeeServiceClient(":50051")
 	for {
 		time.Sleep(3 * time.Second)

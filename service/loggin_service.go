@@ -26,7 +26,15 @@ func (s *loggingService) Login(ctx context.Context, userId int) (types.User, err
 	}
 	user, err := s.userService.GetUser(ctx, userId)
 	if err != nil {
-		return types.User{}, err
+		if err := s.userService.RegisterUser(ctx, types.User{UserId: userId, Nickname: "guest"}); err != nil {
+			return types.User{}, err
+		} else {
+			user, err := s.userService.GetUser(ctx, userId)
+			if err != nil {
+				return types.User{}, err
+			}
+			return user, nil
+		}
 	}
 	log.Printf("user(id:%d, nickname:%s) logged in: \n", userId, user.Nickname)
 	return user, nil

@@ -66,5 +66,6 @@ func (s *WsServer) handleConn(conn p2p.Conn) {
 		conn.Close()
 		return
 	}
+	log.Printf("user %d joined chat", user.UserId)
 	s.chatService.JoinChat(context.Background(), user, conn)
 }

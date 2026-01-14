@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/TheChosenGay/coffee/p2p"
 	"github.com/TheChosenGay/coffee/proto/chat_service"
@@ -39,12 +40,20 @@ func NewChatUser(user types.User, conn p2p.Conn, chatService service.ChatService
 		chatService: chatService,
 	}
 
-	conn.OnRecvMsg(func(msg *p2p.Message) error {
+	conn.OnRecvMsg(func(msg *p2p.Message) (err error) {
+		defer func() {
+			if err != nil {
+				log.Printf("failed to receive message: %v", err)
+				chatUser.conn.Send([]byte(fmt.Sprintf("failed to receive message: %v", err)))
+				chatUser.conn.Close()
+				return
+			}
+		}()
 		chatMsg := &chat_service.Message{}
 		if err := proto.Unmarshal(msg.Payload, chatMsg); err != nil {
 			return err
 		}
-		return chatUser.ReceiveMsg(chatMsg)
+		return chatUser.SendMessage(context.Background(), chatMsg)
 	})
 
 	return chatUser
