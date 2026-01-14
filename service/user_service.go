@@ -7,6 +7,7 @@ import (
 )
 
 type UserService interface {
-	RegisterUser(ctx context.Context, user types.User) (id int, err error)
+	RegisterUser(ctx context.Context, user types.User) error
 	DeleteUser(ctx context.Context, id int) error
+	GetUser(ctx context.Context, id int) (types.User, error)
 }

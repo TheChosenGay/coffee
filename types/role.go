@@ -7,4 +7,5 @@ const (
 	Admin
 	Member
 	Visitor
+	InvalidRole
 )

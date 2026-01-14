@@ -2,29 +2,111 @@ package chat
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
+	"github.com/TheChosenGay/coffee/p2p"
+	"github.com/TheChosenGay/coffee/proto/chat_service"
 	"github.com/TheChosenGay/coffee/service"
 	"github.com/TheChosenGay/coffee/types"
+	"google.golang.org/protobuf/proto"
 )
 
-type userService struct {
-	store service.StoreService
+type UserRoomInfo struct {
+	RoomId int
+	Role   types.RoleType
+	ch     chan types.Message
 }
 
-func NewUserService(store service.StoreService) service.UserService {
-	return &userService{
-		store: store,
+type ChatUser struct {
+	types.User
+	// userRoles reprensents the roles of the user in the room.
+	// key is the room id, value is the role of the user in the room.
+	userRoles map[int]*UserRoomInfo
+
+	// store messages
+	msgStore service.UserStoreService
+	// underling transport
+	conn p2p.Conn
+
+	chatService service.ChatService
+}
+
+func NewChatUser(user types.User, conn p2p.Conn, chatService service.ChatService) *ChatUser {
+	chatUser := &ChatUser{
+		User:        user,
+		conn:        conn,
+		chatService: chatService,
 	}
+
+	conn.OnRecvMsg(func(msg *p2p.Message) error {
+		chatMsg := &chat_service.Message{}
+		if err := proto.Unmarshal(msg.Payload, chatMsg); err != nil {
+			return err
+		}
+		return chatUser.ReceiveMsg(chatMsg)
+	})
+
+	return chatUser
 }
 
-func (s *userService) RegisterUser(ctx context.Context, user types.User) (id int, err error) {
-	userId, err := s.store.StoreUser(ctx, user)
+func (u *ChatUser) Id() int {
+	return u.UserId
+}
+
+func (u *ChatUser) NickName() string {
+	return u.Nickname
+}
+
+func (u *ChatUser) ReceiveMsg(msg *chat_service.Message) error {
+	if int(msg.SenderId) == u.UserId {
+		return errors.New("cannot receive message from yourself")
+	}
+	marshaledMsg, err := proto.Marshal(msg)
 	if err != nil {
-		return types.InvalidUserId, err
+		return err
 	}
-	return userId, nil
+	u.conn.Send(marshaledMsg)
+	return nil
 }
 
-func (s *userService) DeleteUser(ctx context.Context, id int) error {
-	return s.store.DeleteUser(ctx, id)
+func (u *ChatUser) SendMessage(ctx context.Context, msg *chat_service.Message) error {
+	if _, ok := u.userRoles[int(msg.RoomId)]; !ok {
+		fmt.Printf("user %d is not a member of room %d", u.UserId, msg.RoomId)
+		return errors.New("user is not a member of room")
+	}
+	msg.SenderId = int32(u.UserId)
+
+	return u.chatService.SendMessageToRoom(context.Background(), int(msg.RoomId), msg)
+}
+
+func (u *ChatUser) SetBroadcastCh(roomId int, ch chan types.Message) {
+	if _, ok := u.userRoles[roomId]; !ok {
+		u.userRoles[roomId] = &UserRoomInfo{
+			RoomId: roomId,
+			ch:     ch,
+		}
+		return
+	}
+	u.userRoles[roomId].ch = ch
+}
+
+func (u *ChatUser) Role(roomId int) (types.RoleType, error) {
+	if _, ok := u.userRoles[roomId]; !ok {
+		return types.InvalidRole, errors.New("user is not a member of room")
+	}
+	return u.userRoles[roomId].Role, nil
+}
+
+func (u *ChatUser) SetRole(roomId int, role types.RoleType) error {
+	if _, ok := u.userRoles[roomId]; !ok {
+		u.userRoles[roomId] = &UserRoomInfo{
+			RoomId: roomId,
+			Role:   role,
+		}
+		return nil
+	}
+
+	u.userRoles[roomId].Role = role
+	return nil
 }

@@ -1,18 +1,19 @@
 package types
 
 type Content struct {
-}
-
-type TextContent struct {
-	Content
-	content string
-}
-
-type ImageContent struct {
-	Content
-	content []byte
+	Content string
 }
 
 type Message struct {
-	contents []Content
+	RoomId   int
+	SenderId int
+	Contents []Content
+}
+
+func NewMessage(roomId int, senderId int, contents []Content) *Message {
+	return &Message{
+		RoomId:   roomId,
+		SenderId: senderId,
+		Contents: contents,
+	}
 }

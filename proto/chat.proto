@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+option go_package = "./chat_service";
+
+message Content {
+	string content = 1;
+}
+
+message Message {
+	int32 RoomId = 1;
+	int32 SenderId = 2;
+    repeated Content Contents = 3;
+}
