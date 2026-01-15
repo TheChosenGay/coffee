@@ -25,6 +25,20 @@ client-build:
 	
 client-run: client-build
 	@./bin/client
-	
 
-.PHONY: build test clean proto client-build
+# Frontend commands
+front-install:
+	@cd front && bun install
+
+front-dev:
+	@cd front && bun run dev
+
+front-build:
+	@cd front && bun run build
+
+# Run both backend and frontend
+dev-all:
+	@echo "Starting backend and frontend..."
+	@make run & make front-dev
+
+.PHONY: build test clean proto client-build front-install front-dev front-build dev-all
