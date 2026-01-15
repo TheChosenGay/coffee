@@ -18,23 +18,28 @@ import (
 func main() {
 	cs := service.NewLogServiceMiddleware(service.NewCoffeeService())
 	roomStore := store.NewGormRoomStore(newDatabase())
+	userStore := store.NewGormUserStore(newDatabase())
+	userIdService := service.NewUserIdService()
+	userService := user.NewUserService(userStore, userIdService)
 	// use one coffee servive for both json and grpc
-	go runJsonServer(cs, roomStore)
+	go runJsonServer(cs, roomStore, userService)
 	go runGrpcServer(cs)
-	go runWsServer(roomStore)
+	go runWsServer(roomStore, userStore, userService)
 	select {}
 }
 
-func runJsonServer(cs service.CoffeeService, roomStore service.RoomStoreService) {
+func runJsonServer(cs service.CoffeeService, roomStore service.RoomStoreService, userService service.UserService) {
 	csvc := json_handler.NewJsonCoffeeServiceHandler(cs)
+	roomIdService := service.NewRoomIdService()
 
-	idService := service.NewIdService()
-	rs := service.NewRoomService(roomStore, idService)
+	rs := service.NewRoomService(roomStore, roomIdService)
 	rsvc := json_handler.NewJsonRoomServiceHandler(rs)
+	usvc := json_handler.NewJsonUserServiceHandler(userService)
 	jsonServer := api.NewJsonServer(":8080")
-	jsonServer.RegisterHandler(reflect.TypeOf(csvc).Elem().Name(), csvc)
 
+	jsonServer.RegisterHandler(reflect.TypeOf(csvc).Elem().Name(), csvc)
 	jsonServer.RegisterHandler(reflect.TypeOf(rsvc).Elem().Name(), rsvc)
+	jsonServer.RegisterHandler(reflect.TypeOf(usvc).Elem().Name(), usvc)
 	if err := jsonServer.Run(); err != nil {
 		log.Fatalf("failed to run json server: %v", err)
 	}
@@ -49,9 +54,7 @@ func runGrpcServer(cs service.CoffeeService) {
 	}
 }
 
-func runWsServer(roomStore service.RoomStoreService) {
-	userStore := store.NewGormUserStore(newDatabase())
-	userService := user.NewUserService(userStore)
+func runWsServer(roomStore service.RoomStoreService, userStore service.UserStoreService, userService service.UserService) {
 	logginService := service.NewLoggingService(userService)
 	chatService := chat.NewMessageService(roomStore, userStore)
 	wsServer := api.NewWsServer(":8081", logginService, chatService)

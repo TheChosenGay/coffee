@@ -34,7 +34,7 @@ func (s *roomService) CreateRoom(ctx context.Context, users []types.Unit) error 
 	if len(users) > 100 {
 		return errors.New("room size is too large")
 	}
-	roomId := s.idService.GenerateRoomId()
+	roomId := s.idService.GenerateId()
 	room := types.Room{
 		RoomId:      roomId,
 		State:       types.RoomStateNormal,
@@ -97,7 +97,7 @@ func (s *roomService) QuitRoom(ctx context.Context, unit types.Unit, roomId int)
 }
 
 func (s *roomService) CreateRoomBySize(ctx context.Context, maxUnitSize int) (int, error) {
-	roomId := s.idService.GenerateRoomId()
+	roomId := s.idService.GenerateId()
 	room := types.Room{
 		RoomId:      roomId,
 		State:       types.RoomStateNormal,

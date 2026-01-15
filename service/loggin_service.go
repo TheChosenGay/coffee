@@ -10,6 +10,7 @@ import (
 
 type LogginService interface {
 	Login(ctx context.Context, userId int) (types.User, error)
+	Logout(ctx context.Context, userId int) error
 }
 
 type loggingService struct {
@@ -26,16 +27,23 @@ func (s *loggingService) Login(ctx context.Context, userId int) (types.User, err
 	}
 	user, err := s.userService.GetUser(ctx, userId)
 	if err != nil {
-		if err := s.userService.RegisterUser(ctx, types.User{UserId: userId, Nickname: "guest"}); err != nil {
-			return types.User{}, err
-		} else {
-			user, err := s.userService.GetUser(ctx, userId)
-			if err != nil {
-				return types.User{}, err
-			}
-			return user, nil
-		}
+		return types.User{UserId: types.InvalidUserId}, err
 	}
 	log.Printf("user(id:%d, nickname:%s) logged in: \n", userId, user.Nickname)
 	return user, nil
+}
+
+func (s *loggingService) Logout(ctx context.Context, userId int) error {
+	if userId == types.InvalidUserId {
+		return errors.New("invalid user id")
+	}
+
+	user, err := s.userService.GetUser(ctx, userId)
+	if err != nil {
+		return err
+	}
+	reqId := ctx.Value("requestId")
+
+	log.Printf("requestId: %d, user(id:%d, nickname:%s) logged out: \n", reqId, userId, user.Nickname)
+	return nil
 }

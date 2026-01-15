@@ -53,4 +53,15 @@ func (s *gormUserStore) GetUser(ctx context.Context, id int) (types.User, error)
 	return user, nil
 }
 
-// MARK: Coffee Store
+func (s *gormUserStore) ListUser(ctx context.Context) ([]types.User, error) {
+	var users []UserModel
+	result := s.db.Find(&users)
+	if result.Error != nil {
+		return []types.User{}, result.Error
+	}
+	retUsers := make([]types.User, len(users))
+	for i, user := range users {
+		retUsers[i] = user.User
+	}
+	return retUsers, nil
+}

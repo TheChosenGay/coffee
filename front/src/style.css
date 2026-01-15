@@ -52,7 +52,9 @@ h2 {
   gap: 12px;
 }
 
-input[type="number"] {
+input[type="number"],
+input[type="text"],
+select {
   flex: 1;
   padding: 12px 16px;
   border: 2px solid #e0e0e0;
@@ -61,9 +63,16 @@ input[type="number"] {
   transition: border-color 0.3s;
 }
 
-input[type="number"]:focus {
+input[type="number"]:focus,
+input[type="text"]:focus,
+select:focus {
   outline: none;
   border-color: #667eea;
+}
+
+select {
+  background: white;
+  cursor: pointer;
 }
 
 button {
@@ -103,7 +112,8 @@ button:disabled {
   background: #218838;
 }
 
-.room-card {
+.room-card,
+.user-card {
   background: #f8f9fa;
   padding: 20px;
   border-radius: 10px;
@@ -115,12 +125,14 @@ button:disabled {
   border: 2px solid transparent;
 }
 
-.room-card:hover {
+.room-card:hover,
+.user-card:hover {
   border-color: #667eea;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 }
 
-.room-info h3 {
+.room-info h3,
+.user-info h3 {
   color: #333;
   margin-bottom: 8px;
   font-size: 1.2rem;

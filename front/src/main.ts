@@ -1,13 +1,21 @@
 import './style.css';
-import { RoomAPI } from './api';
+import { RoomAPI, UserAPI } from './api';
 
-const api = new RoomAPI();
+const roomAPI = new RoomAPI();
+const userAPI = new UserAPI();
 
-// DOM 元素
+// DOM 元素 - Rooms
 const roomsContainer = document.getElementById('rooms')!;
 const createBtn = document.getElementById('createBtn')!;
 const refreshBtn = document.getElementById('refreshBtn')!;
 const maxSizeInput = document.getElementById('maxSize') as HTMLInputElement;
+
+// DOM 元素 - Users
+const usersContainer = document.getElementById('users')!;
+const registerBtn = document.getElementById('registerBtn')!;
+const refreshUsersBtn = document.getElementById('refreshUsersBtn')!;
+const nicknameInput = document.getElementById('nickname') as HTMLInputElement;
+const sexSelect = document.getElementById('sex') as HTMLSelectElement;
 
 // 获取状态名称
 function getStateName(state: number): string {
@@ -26,7 +34,7 @@ async function renderRooms() {
   roomsContainer.innerHTML = '<p class="loading">Loading...</p>';
   
   try {
-    const rooms = await api.listRooms();
+    const rooms = await roomAPI.listRooms();
     
     if (rooms.length === 0) {
       roomsContainer.innerHTML = '<p class="empty">No rooms yet. Create one to get started!</p>';
@@ -83,7 +91,7 @@ async function createRoom() {
   console.log('Calling API...');
   
   try {
-    const result = await api.createRoom(maxSize);
+    const result = await roomAPI.createRoom(maxSize);
     console.log('Room created:', result);
     
     // 显示成功消息
@@ -110,7 +118,7 @@ async function deleteRoom(roomId: number) {
   }
   
   try {
-    await api.deleteRoom(roomId);
+    await roomAPI.deleteRoom(roomId);
     showNotification(`✅ Room #${roomId} deleted successfully!`, 'success');
     await renderRooms();
   } catch (error) {
@@ -136,17 +144,129 @@ function showNotification(message: string, type: 'success' | 'error') {
   }, 3000);
 }
 
-// 事件监听
+// ========== User Functions ==========
+
+// 渲染用户列表
+async function renderUsers() {
+  usersContainer.innerHTML = '<p class="loading">Loading...</p>';
+  
+  try {
+    const users = await userAPI.listUsers();
+    
+    if (users.length === 0) {
+      usersContainer.innerHTML = '<p class="empty">No users yet. Register one to get started!</p>';
+      return;
+    }
+    
+    usersContainer.innerHTML = users.map(user => `
+      <div class="user-card">
+        <div class="user-info">
+          <h3>${user.Nickname}</h3>
+          <div class="user-details">
+            <span class="detail">🆔 ID: ${user.UserId}</span>
+            <span class="detail">${user.Sex === 0 ? '👨' : '👩'} ${user.Sex === 0 ? 'Male' : 'Female'}</span>
+            ${user.Age > 0 ? `<span class="detail">🎂 Age: ${user.Age}</span>` : ''}
+          </div>
+        </div>
+        <button class="delete-btn" data-user-id="${user.UserId}">Delete</button>
+      </div>
+    `).join('');
+    
+    // 添加删除按钮事件
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      const userId = (btn as HTMLElement).dataset.userId;
+      if (userId) {
+        btn.addEventListener('click', () => {
+          deleteUser(parseInt(userId));
+        });
+      }
+    });
+    
+  } catch (error) {
+    usersContainer.innerHTML = `
+      <div class="error">
+        <h3>❌ Error</h3>
+        <p>${error instanceof Error ? error.message : 'Unknown error'}</p>
+        <p class="hint">Make sure the backend server is running on port 8080</p>
+      </div>
+    `;
+  }
+}
+
+// 注册用户
+async function registerUser() {
+  const nickname = nicknameInput.value.trim();
+  const sex = parseInt(sexSelect.value);
+  
+  if (!nickname) {
+    alert('Please enter a nickname');
+    return;
+  }
+  
+  registerBtn.textContent = 'Registering...';
+  registerBtn.setAttribute('disabled', 'true');
+  
+  try {
+    const result = await userAPI.registerUser(nickname, sex);
+    console.log('User registered:', result);
+    
+    showNotification(`✅ ${result.message}`, 'success');
+    
+    // 重置输入
+    nicknameInput.value = '';
+    sexSelect.value = '0';
+    
+    // 刷新列表
+    await renderUsers();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    showNotification(`❌ Failed to register user: ${message}`, 'error');
+  } finally {
+    registerBtn.textContent = 'Register User';
+    registerBtn.removeAttribute('disabled');
+  }
+}
+
+// 删除用户
+async function deleteUser(userId: number) {
+  if (!confirm(`Are you sure you want to delete User #${userId}?`)) {
+    return;
+  }
+  
+  try {
+    await userAPI.deleteUser(userId);
+    showNotification(`✅ User #${userId} deleted successfully!`, 'success');
+    await renderUsers();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    showNotification(`❌ Failed to delete user: ${message}`, 'error');
+  }
+}
+
+// ========== Event Listeners ==========
+
+// Room events
 createBtn.addEventListener('click', createRoom);
 refreshBtn.addEventListener('click', renderRooms);
 
-// 回车键创建房间
+// User events
+registerBtn.addEventListener('click', registerUser);
+refreshUsersBtn.addEventListener('click', renderUsers);
+
+// 回车键快捷操作
 maxSizeInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     createRoom();
   }
 });
 
+nicknameInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    registerUser();
+  }
+});
+
 // 初始化
 renderRooms();
+renderUsers();
 

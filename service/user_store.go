@@ -11,4 +11,5 @@ type UserStoreService interface {
 	StoreUser(context.Context, types.User) error
 	DeleteUser(ctx context.Context, id int) error
 	GetUser(ctx context.Context, id int) (types.User, error)
+	ListUser(ctx context.Context) ([]types.User, error)
 }
