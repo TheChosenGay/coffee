@@ -1,4 +1,5 @@
-const BASE_URL = 'http://localhost:8080';
+// 使用 Vite 代理，避免 CORS 问题
+const BASE_URL = '/api';
 
 export interface Room {
   room_id: number;

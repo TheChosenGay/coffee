@@ -3,63 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>☕ Coffee - Room Service Tester</title>
+  <title>☕ Coffee - Service Tester</title>
 </head>
 <body>
   <div id="app">
     <h1>☕ Coffee Service Tester</h1>
     
-    <!-- User Registration Section -->
-    <div class="section">
-      <h2>👤 Register User</h2>
-      <div class="create-form">
-        <input 
-          type="text" 
-          id="nickname" 
-          placeholder="Nickname" 
-          maxlength="50"
-        />
-        <select id="sex">
-          <option value="0">Male</option>
-          <option value="1">Female</option>
-        </select>
-        <button id="registerBtn">Register User</button>
+    <div class="container">
+      <!-- 左侧 Tab 导航 -->
+      <div class="sidebar">
+        <button class="tab-btn active" data-tab="user">👤 User</button>
+        <button class="tab-btn" data-tab="room">🏠 Room</button>
       </div>
-    </div>
-    
-    <div class="section">
-      <div class="header">
-        <h2>👥 Users List</h2>
-        <button id="refreshUsersBtn">🔄 Refresh</button>
+      
+      <!-- 右侧内容区域 -->
+      <div class="content">
+        <!-- User Tab 内容 -->
+        <div id="user-tab" class="tab-content active">
+          <div class="section">
+            <h2>👤 Register User</h2>
+            <div class="create-form">
+              <input 
+                type="text" 
+                id="nickname" 
+                placeholder="Nickname" 
+                maxlength="50"
+              />
+              <select id="sex">
+                <option value="0">Male</option>
+                <option value="1">Female</option>
+              </select>
+              <button id="registerBtn">Register User</button>
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="header">
+              <h2>👥 Users List</h2>
+              <button id="refreshUsersBtn">🔄 Refresh</button>
+            </div>
+            <div id="users"></div>
+          </div>
+        </div>
+        
+        <!-- Room Tab 内容 -->
+        <div id="room-tab" class="tab-content">
+          <div class="section">
+            <h2>🏠 Create Room</h2>
+            <div class="create-form">
+              <input 
+                type="number" 
+                id="maxSize" 
+                placeholder="Max Unit Size" 
+                value="100"
+                min="1"
+              />
+              <button id="createBtn">Create Room</button>
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="header">
+              <h2>Rooms List</h2>
+              <button id="refreshBtn">🔄 Refresh</button>
+            </div>
+            <div id="rooms"></div>
+          </div>
+        </div>
       </div>
-      <div id="users"></div>
-    </div>
-    
-    <!-- Room Management Section -->
-    <div class="section">
-      <h2>🏠 Create Room</h2>
-      <div class="create-form">
-        <input 
-          type="number" 
-          id="maxSize" 
-          placeholder="Max Unit Size" 
-          value="100"
-          min="1"
-        />
-        <button id="createBtn">Create Room</button>
-      </div>
-    </div>
-    
-    <div class="section">
-      <div class="header">
-        <h2>Rooms List</h2>
-        <button id="refreshBtn">🔄 Refresh</button>
-      </div>
-      <div id="rooms"></div>
     </div>
   </div>
   
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
-

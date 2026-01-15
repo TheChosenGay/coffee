@@ -4,18 +4,16 @@ import { RoomAPI, UserAPI } from './api';
 const roomAPI = new RoomAPI();
 const userAPI = new UserAPI();
 
-// DOM 元素 - Rooms
-const roomsContainer = document.getElementById('rooms')!;
-const createBtn = document.getElementById('createBtn')!;
-const refreshBtn = document.getElementById('refreshBtn')!;
-const maxSizeInput = document.getElementById('maxSize') as HTMLInputElement;
-
-// DOM 元素 - Users
-const usersContainer = document.getElementById('users')!;
-const registerBtn = document.getElementById('registerBtn')!;
-const refreshUsersBtn = document.getElementById('refreshUsersBtn')!;
-const nicknameInput = document.getElementById('nickname') as HTMLInputElement;
-const sexSelect = document.getElementById('sex') as HTMLSelectElement;
+// DOM 元素 - 在 DOMContentLoaded 中初始化
+let roomsContainer: HTMLElement;
+let createBtn: HTMLElement;
+let refreshBtn: HTMLElement;
+let maxSizeInput: HTMLInputElement;
+let usersContainer: HTMLElement;
+let registerBtn: HTMLElement;
+let refreshUsersBtn: HTMLElement;
+let nicknameInput: HTMLInputElement;
+let sexSelect: HTMLSelectElement;
 
 // 获取状态名称
 function getStateName(state: number): string {
@@ -243,30 +241,70 @@ async function deleteUser(userId: number) {
   }
 }
 
-// ========== Event Listeners ==========
+// ========== Tab 切换功能 ==========
 
-// Room events
-createBtn.addEventListener('click', createRoom);
-refreshBtn.addEventListener('click', renderRooms);
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabContents = document.querySelectorAll('.tab-content');
 
-// User events
-registerBtn.addEventListener('click', registerUser);
-refreshUsersBtn.addEventListener('click', renderUsers);
-
-// 回车键快捷操作
-maxSizeInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    createRoom();
+function switchTab(tabName: string) {
+  // 移除所有 active 类
+  tabButtons.forEach(btn => btn.classList.remove('active'));
+  tabContents.forEach(content => content.classList.remove('active'));
+  
+  // 激活选中的 tab
+  const selectedBtn = document.querySelector(`[data-tab="${tabName}"]`);
+  const selectedContent = document.getElementById(`${tabName}-tab`);
+  
+  if (selectedBtn && selectedContent) {
+    selectedBtn.classList.add('active');
+    selectedContent.classList.add('active');
   }
+}
+
+// 绑定 tab 按钮事件
+tabButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tabName = (btn as HTMLElement).dataset.tab;
+    if (tabName) {
+      switchTab(tabName);
+    }
+  });
 });
 
-nicknameInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    registerUser();
-  }
+// 初始化 - 等待 DOM 加载完成
+document.addEventListener('DOMContentLoaded', () => {
+  // 初始化 DOM 元素引用
+  roomsContainer = document.getElementById('rooms')!;
+  createBtn = document.getElementById('createBtn')!;
+  refreshBtn = document.getElementById('refreshBtn')!;
+  maxSizeInput = document.getElementById('maxSize') as HTMLInputElement;
+  usersContainer = document.getElementById('users')!;
+  registerBtn = document.getElementById('registerBtn')!;
+  refreshUsersBtn = document.getElementById('refreshUsersBtn')!;
+  nicknameInput = document.getElementById('nickname') as HTMLInputElement;
+  sexSelect = document.getElementById('sex') as HTMLSelectElement;
+  
+  // 绑定事件监听器
+  createBtn.addEventListener('click', createRoom);
+  refreshBtn.addEventListener('click', renderRooms);
+  registerBtn.addEventListener('click', registerUser);
+  refreshUsersBtn.addEventListener('click', renderUsers);
+  
+  // 回车键快捷操作
+  maxSizeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      createRoom();
+    }
+  });
+  
+  nicknameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      registerUser();
+    }
+  });
+  
+  // 初始化数据
+  renderRooms();
+  renderUsers();
 });
-
-// 初始化
-renderRooms();
-renderUsers();
 
