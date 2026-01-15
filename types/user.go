@@ -3,6 +3,7 @@ package types
 type Sex int
 
 const InvalidUserId = -1
+const InvalidRoomId = -1
 
 const (
 	Male Sex = iota

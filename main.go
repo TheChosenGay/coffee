@@ -17,17 +17,24 @@ import (
 
 func main() {
 	cs := service.NewLogServiceMiddleware(service.NewCoffeeService())
+	roomStore := store.NewGormRoomStore(newDatabase())
 	// use one coffee servive for both json and grpc
-	go runJsonServer(cs)
+	go runJsonServer(cs, roomStore)
 	go runGrpcServer(cs)
-	go runWsServer()
+	go runWsServer(roomStore)
 	select {}
 }
 
-func runJsonServer(cs service.CoffeeService) {
+func runJsonServer(cs service.CoffeeService, roomStore service.RoomStoreService) {
 	csvc := json_handler.NewJsonCoffeeServiceHandler(cs)
+
+	idService := service.NewIdService()
+	rs := service.NewRoomService(roomStore, idService)
+	rsvc := json_handler.NewJsonRoomServiceHandler(rs)
 	jsonServer := api.NewJsonServer(":8080")
 	jsonServer.RegisterHandler(reflect.TypeOf(csvc).Elem().Name(), csvc)
+
+	jsonServer.RegisterHandler(reflect.TypeOf(rsvc).Elem().Name(), rsvc)
 	if err := jsonServer.Run(); err != nil {
 		log.Fatalf("failed to run json server: %v", err)
 	}
@@ -42,12 +49,11 @@ func runGrpcServer(cs service.CoffeeService) {
 	}
 }
 
-func runWsServer() {
+func runWsServer(roomStore service.RoomStoreService) {
 	userStore := store.NewGormUserStore(newDatabase())
-	roomStore := store.NewGormRoomStore(newDatabase())
 	userService := user.NewUserService(userStore)
 	logginService := service.NewLoggingService(userService)
-	chatService := chat.NewChatService(roomStore, userStore)
+	chatService := chat.NewMessageService(roomStore, userStore)
 	wsServer := api.NewWsServer(":8081", logginService, chatService)
 	// 服务需要能够拿到对应的用户
 
@@ -61,7 +67,7 @@ func newDatabase() *gorm.DB {
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
-	if err := db.AutoMigrate(&store.UserModel{}); err != nil {
+	if err := db.AutoMigrate(&store.UserModel{}, &store.RoomModel{}); err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
 	}
 	return db

@@ -26,18 +26,18 @@ type ChatUser struct {
 	userRoles map[int]*UserRoomInfo
 
 	// store messages
-	msgStore service.UserStoreService
+	userStore service.UserStoreService
 	// underling transport
 	conn p2p.Conn
 
-	chatService service.ChatService
+	messageService MessageService
 }
 
-func NewChatUser(user types.User, conn p2p.Conn, chatService service.ChatService) *ChatUser {
+func NewChatUser(user types.User, conn p2p.Conn, messageService MessageService) *ChatUser {
 	chatUser := &ChatUser{
-		User:        user,
-		conn:        conn,
-		chatService: chatService,
+		User:           user,
+		conn:           conn,
+		messageService: messageService,
 	}
 
 	conn.OnRecvMsg(func(msg *p2p.Message) (err error) {
@@ -53,7 +53,8 @@ func NewChatUser(user types.User, conn p2p.Conn, chatService service.ChatService
 		if err := proto.Unmarshal(msg.Payload, chatMsg); err != nil {
 			return err
 		}
-		return chatUser.SendMessage(context.Background(), chatMsg)
+		userMsg := types.NewMessage(types.MessageTypeNormal, int(chatMsg.RoomId), int(chatMsg.SenderId), chatMsg.Contents)
+		return chatUser.SendMessage(context.Background(), userMsg)
 	})
 
 	return chatUser
@@ -67,11 +68,31 @@ func (u *ChatUser) NickName() string {
 	return u.Nickname
 }
 
-func (u *ChatUser) ReceiveMsg(msg *chat_service.Message) error {
+func (u *ChatUser) ReceiveMsg(msg *types.Message) error {
 	if int(msg.SenderId) == u.UserId {
 		return errors.New("cannot receive message from yourself")
 	}
-	marshaledMsg, err := proto.Marshal(msg)
+
+	if msg.MsgType == types.MessageTypeSignal {
+		if msg.SignalType == types.SignalTypeRoomDeleted {
+			u.conn.Send([]byte(fmt.Sprintf("room %d is deleted", msg.TargetId)))
+			u.conn.Close()
+			return nil
+		} else if msg.SignalType == types.SignalTypeRoomJoined {
+			log.Printf("user %d joined room %d", u.UserId, msg.TargetId)
+			u.userRoles[int(msg.TargetId)] = &UserRoomInfo{
+				RoomId: int(msg.TargetId),
+			}
+			return nil
+		}
+	}
+
+	chatMsg := &chat_service.Message{
+		RoomId:   int32(msg.TargetId),
+		SenderId: int32(msg.SenderId),
+		Contents: msg.Contents,
+	}
+	marshaledMsg, err := proto.Marshal(chatMsg)
 	if err != nil {
 		return err
 	}
@@ -79,14 +100,18 @@ func (u *ChatUser) ReceiveMsg(msg *chat_service.Message) error {
 	return nil
 }
 
-func (u *ChatUser) SendMessage(ctx context.Context, msg *chat_service.Message) error {
-	if _, ok := u.userRoles[int(msg.RoomId)]; !ok {
-		fmt.Printf("user %d is not a member of room %d", u.UserId, msg.RoomId)
-		return errors.New("user is not a member of room")
-	}
-	msg.SenderId = int32(u.UserId)
+func (u *ChatUser) SendMessage(ctx context.Context, msg *types.Message) error {
+	if msg.Broadcast {
+		if _, ok := u.userRoles[int(msg.TargetId)]; !ok {
+			fmt.Printf("user %d is not a member of room %d", u.UserId, msg.TargetId)
+			return errors.New("user is not a member of room")
+		}
+		msg.SenderId = int(u.User.UserId)
 
-	return u.chatService.SendMessageToRoom(context.Background(), int(msg.RoomId), msg)
+		types.NewMessage(types.MessageTypeNormal, int(msg.TargetId), int(msg.SenderId), msg.Contents)
+		return u.messageService.SendMessageToRoom(context.Background(), int(msg.TargetId), types.NewMessage(types.MessageTypeNormal, int(msg.TargetId), int(msg.SenderId), msg.Contents))
+	}
+	return nil
 }
 
 func (u *ChatUser) SetBroadcastCh(roomId int, ch chan types.Message) {

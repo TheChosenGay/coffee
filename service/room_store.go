@@ -7,7 +7,9 @@ import (
 )
 
 type RoomStoreService interface {
-	CreateRoom(ctx context.Context, users []types.Unit) (int, error)
+	CreateRoom(ctx context.Context, room types.Room) error
 	GetRoom(ctx context.Context, id int) (types.Room, error)
 	DeleteRoom(ctx context.Context, id int) error
+	UpdateRoom(ctx context.Context, room types.Room) error
+	ListRoom(ctx context.Context) ([]*types.Room, error)
 }

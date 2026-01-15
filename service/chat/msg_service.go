@@ -7,25 +7,30 @@ import (
 	"sync"
 
 	"github.com/TheChosenGay/coffee/p2p"
-	"github.com/TheChosenGay/coffee/proto/chat_service"
 	"github.com/TheChosenGay/coffee/service"
 	"github.com/TheChosenGay/coffee/types"
 )
 
-type chatService struct {
+type MessageService interface {
+	JoinChat(ctx context.Context, user types.User, conn p2p.Conn) error
+	SendMessageToRoom(ctx context.Context, roomId int, message *types.Message) error
+	SendMessageToUser(ctx context.Context, targetUserId int, message *types.Message) error
+}
+
+type messageService struct {
 	roomStore service.RoomStoreService
 	userStore service.UserStoreService
 	users     sync.Map
 }
 
-func NewChatService(roomStore service.RoomStoreService, userStore service.UserStoreService) service.ChatService {
-	return &chatService{
+func NewMessageService(roomStore service.RoomStoreService, userStore service.UserStoreService) MessageService {
+	return &messageService{
 		roomStore: roomStore,
 		userStore: userStore,
 	}
 }
 
-func (s *chatService) JoinChat(ctx context.Context, user types.User, conn p2p.Conn) error {
+func (s *messageService) JoinChat(ctx context.Context, user types.User, conn p2p.Conn) error {
 	chatUser := NewChatUser(user, conn, s)
 
 	s.users.Store(chatUser.Id(), chatUser)
@@ -33,7 +38,7 @@ func (s *chatService) JoinChat(ctx context.Context, user types.User, conn p2p.Co
 	return nil
 }
 
-func (s *chatService) SendMessageToRoom(ctx context.Context, roomId int, message *chat_service.Message) error {
+func (s *messageService) SendMessageToRoom(ctx context.Context, roomId int, message *types.Message) error {
 	log.Printf("user %d sending message to room %d", message.SenderId, roomId)
 	room, err := s.roomStore.GetRoom(ctx, roomId)
 	if err != nil {
@@ -54,7 +59,7 @@ func (s *chatService) SendMessageToRoom(ctx context.Context, roomId int, message
 	return nil
 }
 
-func (s *chatService) SendMessageToUser(ctx context.Context, targetUserId int, message *chat_service.Message) error {
+func (s *messageService) SendMessageToUser(ctx context.Context, targetUserId int, message *types.Message) error {
 	log.Printf("sending message to user %d", targetUserId)
 	_, err := s.userStore.GetUser(ctx, targetUserId)
 	if err != nil {

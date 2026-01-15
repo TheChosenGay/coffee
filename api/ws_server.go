@@ -9,21 +9,22 @@ import (
 	"github.com/TheChosenGay/coffee/p2p"
 	"github.com/TheChosenGay/coffee/p2p/websocket"
 	"github.com/TheChosenGay/coffee/service"
+	"github.com/TheChosenGay/coffee/service/chat"
 	"github.com/TheChosenGay/coffee/types"
 )
 
 type WsServer struct {
-	transport     p2p.Transport
-	logginService service.LogginService
-	chatService   service.ChatService
+	transport      p2p.Transport
+	logginService  service.LogginService
+	messageService chat.MessageService
 }
 
-func NewWsServer(listenAddr string, logginService service.LogginService, chatService service.ChatService) *WsServer {
+func NewWsServer(listenAddr string, logginService service.LogginService, messageService chat.MessageService) *WsServer {
 	transport := websocket.NewWsTransport(listenAddr)
 	wsServer := &WsServer{
-		transport:     transport,
-		logginService: logginService,
-		chatService:   chatService,
+		transport:      transport,
+		logginService:  logginService,
+		messageService: messageService,
 	}
 
 	transport.OnConn(func(conn p2p.Conn) {
@@ -56,16 +57,18 @@ func (s *WsServer) handleConn(conn p2p.Conn) {
 	}
 
 	user, err := s.logginService.Login(context.Background(), userIdInt)
+
 	if user.UserId == types.InvalidUserId {
 		conn.Send([]byte(fmt.Sprintf("invalid userId: %s\n", userId)))
 		conn.Close()
 		return
 	}
-	if err := s.chatService.JoinChat(context.Background(), user, conn); err != nil {
+
+	if err := s.messageService.JoinChat(context.Background(), user, conn); err != nil {
 		conn.Send([]byte(fmt.Sprintf("failed to join chat room: %+v\n", err)))
 		conn.Close()
 		return
 	}
 	log.Printf("user %d joined chat", user.UserId)
-	s.chatService.JoinChat(context.Background(), user, conn)
+	s.messageService.JoinChat(context.Background(), user, conn)
 }
