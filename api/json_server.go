@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+
+	"github.com/rs/cors"
 )
 
 type JsonServerHandler interface {
@@ -47,8 +49,15 @@ func (s *JsonServer) Run() error {
 		handler.MakeJsonServiceHandler()
 		log.Printf("start service: %s", name)
 	}
+	// allow cross-origin requests
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"*"},
+	})
+	handler := c.Handler(http.DefaultServeMux)
 	log.Println("Starting JSON server on port 8080")
-	return http.ListenAndServe(s.listenAddr, nil)
+	return http.ListenAndServe(s.listenAddr, handler)
 }
 
 func WriteToJson(w http.ResponseWriter, status int, v any) error {

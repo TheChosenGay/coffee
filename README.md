@@ -9,6 +9,7 @@ Coffee is a micro-service implemented by go for coffee trade.
 
 + json over http 
 + grpc 
++ websocket for chat
 + container by docker
 
 

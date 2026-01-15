@@ -3,6 +3,7 @@ module github.com/TheChosenGay/coffee
 go 1.25.3
 
 require (
+	github.com/rs/cors v1.11.1
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/net v0.49.0
 	google.golang.org/grpc v1.78.0
