@@ -37,7 +37,7 @@ func (s *JsonServer) RegisterHandler(name string, handler JsonServerHandler) err
 
 func (s *JsonServer) RegisterHandlers([]JsonServerHandler) error {
 	for _, handler := range s.handlers {
-		if err := s.RegisterHandler(reflect.TypeOf(handler).Name(), handler); err != nil {
+		if err := s.RegisterHandler(reflect.TypeOf(handler).Elem().Name(), handler); err != nil {
 			return err
 		}
 	}
