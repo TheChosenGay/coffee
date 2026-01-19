@@ -3,7 +3,6 @@ package redis_store
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/TheChosenGay/coffee/types"
@@ -56,7 +55,7 @@ func (s *RedisUserStore) GetUser(ctx context.Context, userId int) (types.User, e
 }
 
 func (s *RedisUserStore) ListUser(ctx context.Context) ([]types.User, error) {
-	return nil, errors.New("not implemented")
+	return nil, nil
 }
 
 func (s *RedisUserStore) getKey(userId int) string {

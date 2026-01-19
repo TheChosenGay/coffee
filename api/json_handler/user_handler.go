@@ -3,6 +3,7 @@ package json_handler
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"net/http"
 	"strconv"
@@ -80,6 +81,7 @@ func (s *JsonUserServiceHandler) listUsers(w http.ResponseWriter, r *http.Reques
 	ctx = context.WithValue(ctx, "requestId", rand.Int64N(1000000))
 	users, err := s.svc.ListUser(ctx)
 	if err != nil {
+		log.Println("list users error:", err)
 		api.WriteToJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}

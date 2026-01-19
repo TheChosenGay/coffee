@@ -241,6 +241,7 @@ async function deleteUser(userId: number) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     showNotification(`❌ Failed to delete user: ${message}`, 'error');
   }
+
 }
 
 // ========== Event Listeners ==========

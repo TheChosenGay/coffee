@@ -13,6 +13,9 @@ type CacheUserStore struct {
 }
 
 func NewCacheUserStore(cache store.UserStore, db store.UserStore) *CacheUserStore {
+	if cache == nil || db == nil {
+		panic("cache and db cannot be nil")
+	}
 	return &CacheUserStore{cache: cache, db: db}
 }
 
@@ -56,6 +59,14 @@ func (s *CacheUserStore) GetUser(ctx context.Context, id int) (types.User, error
 
 func (s *CacheUserStore) ListUser(ctx context.Context) ([]types.User, error) {
 	users, err := s.cache.ListUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(users) > 0 {
+		return users, nil
+	}
+
+	users, err = s.db.ListUser(ctx)
 	if err != nil {
 		return nil, err
 	}
