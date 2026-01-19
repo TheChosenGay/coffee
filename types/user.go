@@ -17,3 +17,7 @@ type User struct {
 	Age      int
 	Birthday int64
 }
+
+func (u User) IsValid() bool {
+	return u.UserId != InvalidUserId
+}

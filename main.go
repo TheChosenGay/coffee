@@ -10,7 +10,9 @@ import (
 	"github.com/TheChosenGay/coffee/service"
 	"github.com/TheChosenGay/coffee/service/chat"
 	"github.com/TheChosenGay/coffee/service/store"
+	"github.com/TheChosenGay/coffee/service/store/cache_store"
 	"github.com/TheChosenGay/coffee/service/store/gorm_store"
+	"github.com/TheChosenGay/coffee/service/store/redis_store"
 )
 
 func main() {
@@ -22,11 +24,13 @@ func main() {
 		Addr:     "127.0.0.1:3306",
 		DBName:   "coffee",
 	})
-	roomStore := gorm_store.NewGormRoomStore(db)
+	redisStore := redis_store.NewRedisUserStore(redis_store.RedisStoreOpts{Addr: "127.0.0.1:6379", Password: "", DB: 0})
 	userStore := gorm_store.NewGormUserStore(db)
+	roomStore := gorm_store.NewGormRoomStore(db)
+	cachedUserStore := cache_store.NewCacheUserStore(redisStore, userStore)
 
 	userIdService := service.NewUserIdService()
-	userService := service.NewUserService(userStore, userIdService)
+	userService := service.NewUserService(cachedUserStore, userIdService)
 	// use one coffee servive for both json and grpc
 	go runJsonServer(cs, roomStore, userService)
 	go runGrpcServer(cs)
