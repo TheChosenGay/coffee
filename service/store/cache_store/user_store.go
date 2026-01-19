@@ -2,6 +2,7 @@ package cache_store
 
 import (
 	"context"
+	"log"
 
 	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/types"
@@ -43,6 +44,7 @@ func (s *CacheUserStore) DeleteUser(ctx context.Context, id int) error {
 func (s *CacheUserStore) GetUser(ctx context.Context, id int) (types.User, error) {
 	user, err := s.cache.GetUser(ctx, id)
 	if user.IsValid() && err == nil {
+		log.Println("user is cached")
 		return user, nil
 	}
 

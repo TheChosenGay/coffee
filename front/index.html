@@ -9,53 +9,87 @@
   <div id="app">
     <h1>☕ Coffee Service Tester</h1>
     
-    <!-- User Registration Section -->
-    <div class="section">
-      <h2>👤 Register User</h2>
-      <div class="create-form">
-        <input 
-          type="text" 
-          id="nickname" 
-          placeholder="Nickname" 
-          maxlength="50"
-        />
-        <select id="sex">
-          <option value="0">Male</option>
-          <option value="1">Female</option>
-        </select>
-        <button id="registerBtn">Register User</button>
-      </div>
-    </div>
-    
-    <div class="section">
-      <div class="header">
-        <h2>👥 Users List</h2>
-        <button id="refreshUsersBtn">🔄 Refresh</button>
-      </div>
-      <div id="users"></div>
-    </div>
-    
-    <!-- Room Management Section -->
-    <div class="section">
-      <h2>🏠 Create Room</h2>
-      <div class="create-form">
-        <input 
-          type="number" 
-          id="maxSize" 
-          placeholder="Max Unit Size" 
-          value="100"
-          min="1"
-        />
-        <button id="createBtn">Create Room</button>
-      </div>
-    </div>
-    
-    <div class="section">
-      <div class="header">
-        <h2>Rooms List</h2>
-        <button id="refreshBtn">🔄 Refresh</button>
-      </div>
-      <div id="rooms"></div>
+    <div class="main-container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h2>管理面板</h2>
+        </div>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="users">
+            <span>👤</span>
+            <span>用户管理</span>
+          </button>
+          <button class="tab-btn" data-tab="rooms">
+            <span>🏠</span>
+            <span>房间管理</span>
+          </button>
+        </div>
+      </aside>
+      
+      <!-- Main Content -->
+      <main class="content">
+        <!-- Users Tab Content -->
+        <div class="tab-content active" id="users-tab">
+          <div class="section">
+            <h2>👤 注册用户</h2>
+            <div class="create-form">
+              <input 
+                type="text" 
+                id="nickname" 
+                placeholder="昵称" 
+                maxlength="50"
+              />
+              <select id="sex">
+                <option value="0">男</option>
+                <option value="1">女</option>
+              </select>
+              <button id="registerBtn">注册用户</button>
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="header">
+              <h2>👥 用户列表</h2>
+              <div class="header-actions">
+                <input 
+                  type="text" 
+                  id="userSearch" 
+                  placeholder="🔍 搜索用户ID或昵称..." 
+                  class="search-input"
+                />
+                <button id="refreshUsersBtn">🔄 刷新</button>
+              </div>
+            </div>
+            <div id="users"></div>
+          </div>
+        </div>
+        
+        <!-- Rooms Tab Content -->
+        <div class="tab-content" id="rooms-tab">
+          <div class="section">
+            <h2>🏠 创建房间</h2>
+            <div class="create-form">
+              <input 
+                type="number" 
+                id="maxSize" 
+                placeholder="最大容量" 
+                value="100"
+                min="1"
+              />
+              <button id="createBtn">创建房间</button>
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="header">
+              <h2>房间列表</h2>
+              <button id="refreshBtn">🔄 刷新</button>
+            </div>
+            <div id="rooms"></div>
+          </div>
+        </div>
+      </main>
     </div>
   </div>
   

@@ -93,5 +93,14 @@ export class UserAPI {
       throw new Error((data as ErrorResponse).error || 'Failed to delete user');
     }
   }
+
+  async getUserById(userId: number): Promise<User> {
+    const res = await fetch(`${BASE_URL}/user/get?id=${userId}`);
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error((data as ErrorResponse).error || 'Failed to get user');
+    }
+    return res.json();
+  }
 }
 
