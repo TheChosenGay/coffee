@@ -14,63 +14,8 @@ body {
 }
 
 #app {
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
-}
-
-.container {
-  display: flex;
-  gap: 20px;
-}
-
-/* 左侧 Tab 导航 */
-.sidebar {
-  width: 200px;
-  flex-shrink: 0;
-  background: white;
-  border-radius: 12px;
-  padding: 20px 0;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  height: fit-content;
-}
-
-.tab-btn {
-  width: 100%;
-  padding: 15px 20px;
-  border: none;
-  background: transparent;
-  text-align: left;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #666;
-  cursor: pointer;
-  transition: all 0.3s;
-  border-left: 3px solid transparent;
-}
-
-.tab-btn:hover {
-  background: #f8f9fa;
-  color: #333;
-}
-
-.tab-btn.active {
-  background: #f0f4ff;
-  color: #667eea;
-  border-left-color: #667eea;
-}
-
-/* 右侧内容区域 */
-.content {
-  flex: 1;
-  min-width: 0;
-}
-
-.tab-content {
-  display: none;
-}
-
-.tab-content.active {
-  display: block;
 }
 
 h1 {
@@ -288,35 +233,11 @@ button:disabled {
     font-size: 2rem;
   }
 
-  .container {
-    flex-direction: column;
-  }
-  
-  .sidebar {
-    width: 100%;
-    display: flex;
-    padding: 0;
-  }
-  
-  .tab-btn {
-    flex: 1;
-    text-align: center;
-    border-left: none;
-    border-bottom: 3px solid transparent;
-    padding: 15px;
-  }
-  
-  .tab-btn.active {
-    border-left: none;
-    border-bottom-color: #667eea;
-  }
-
   .create-form {
     flex-direction: column;
   }
 
-  .room-card,
-  .user-card {
+  .room-card {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;

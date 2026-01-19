@@ -2,6 +2,7 @@ package gorm_store
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/TheChosenGay/coffee/types"
 	"gorm.io/gorm"
@@ -17,6 +18,9 @@ type gormUserStore struct {
 }
 
 func NewGormUserStore(db *gorm.DB) *gormUserStore {
+	if err := db.AutoMigrate(&UserModel{}); err != nil {
+		panic(fmt.Sprintf("failed to migrate UserModel: %v", err))
+	}
 	return &gormUserStore{db: db}
 }
 

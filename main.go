@@ -15,15 +15,15 @@ import (
 
 func main() {
 	cs := service.NewCoffeeService()
-	roomStore := gorm_store.NewGormRoomStore(store.NewSqliteDatabase(store.SqliteDatabaseOpts{
-		Path: "test.db",
-	}))
-
-	userStore := gorm_store.NewGormUserStore(store.NewSqliteDatabase(
-		store.SqliteDatabaseOpts{
-			Path: "test.db",
-		},
-	))
+	db := gorm_store.NewMySqlDatabase(gorm_store.MySqlDatabaseOpts{
+		Username: "root",
+		Password: "123456",
+		Protocol: "tcp",
+		Addr:     "127.0.0.1:3306",
+		DBName:   "coffee",
+	})
+	roomStore := gorm_store.NewGormRoomStore(db)
+	userStore := gorm_store.NewGormUserStore(db)
 
 	userIdService := service.NewUserIdService()
 	userService := service.NewUserService(userStore, userIdService)

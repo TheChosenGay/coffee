@@ -2,6 +2,7 @@ package gorm_store
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/TheChosenGay/coffee/service"
 	"github.com/TheChosenGay/coffee/types"
@@ -19,6 +20,10 @@ type gormRoomStore struct {
 }
 
 func NewGormRoomStore(db *gorm.DB) *gormRoomStore {
+	// 自动迁移表结构
+	if err := db.AutoMigrate(&RoomModel{}); err != nil {
+		panic(fmt.Sprintf("failed to migrate RoomModel: %v", err))
+	}
 	return &gormRoomStore{db: db}
 }
 
