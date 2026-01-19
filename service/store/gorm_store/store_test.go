@@ -1,4 +1,4 @@
-package store
+package gorm_store
 
 import (
 	"context"

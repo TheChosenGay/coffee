@@ -9,18 +9,24 @@ import (
 	"github.com/TheChosenGay/coffee/api/json_handler"
 	"github.com/TheChosenGay/coffee/service"
 	"github.com/TheChosenGay/coffee/service/chat"
-	store "github.com/TheChosenGay/coffee/service/store/gorm"
-	"github.com/TheChosenGay/coffee/service/user"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	"github.com/TheChosenGay/coffee/service/store"
+	"github.com/TheChosenGay/coffee/service/store/gorm_store"
 )
 
 func main() {
-	cs := service.NewLogServiceMiddleware(service.NewCoffeeService())
-	roomStore := store.NewGormRoomStore(newDatabase())
-	userStore := store.NewGormUserStore(newDatabase())
+	cs := service.NewCoffeeService()
+	roomStore := gorm_store.NewGormRoomStore(store.NewSqliteDatabase(store.SqliteDatabaseOpts{
+		Path: "test.db",
+	}))
+
+	userStore := gorm_store.NewGormUserStore(store.NewSqliteDatabase(
+		store.SqliteDatabaseOpts{
+			Path: "test.db",
+		},
+	))
+
 	userIdService := service.NewUserIdService()
-	userService := user.NewUserService(userStore, userIdService)
+	userService := service.NewUserService(userStore, userIdService)
 	// use one coffee servive for both json and grpc
 	go runJsonServer(cs, roomStore, userService)
 	go runGrpcServer(cs)
@@ -28,7 +34,8 @@ func main() {
 	select {}
 }
 
-func runJsonServer(cs service.CoffeeService, roomStore service.RoomStoreService, userService service.UserService) {
+// start json over http server
+func runJsonServer(cs service.CoffeeService, roomStore store.RoomStore, userService service.UserService) {
 	csvc := json_handler.NewJsonCoffeeServiceHandler(cs)
 	roomIdService := service.NewRoomIdService()
 
@@ -45,6 +52,7 @@ func runJsonServer(cs service.CoffeeService, roomStore service.RoomStoreService,
 	}
 }
 
+// start grpc server
 func runGrpcServer(cs service.CoffeeService) {
 	csvc := grpc_handler.NewGrpcCoffeeServiceHandler(cs)
 	grpcServer := api.NewGrpcServer(":50051")
@@ -54,7 +62,8 @@ func runGrpcServer(cs service.CoffeeService) {
 	}
 }
 
-func runWsServer(roomStore service.RoomStoreService, userStore service.UserStoreService, userService service.UserService) {
+// start websocket server
+func runWsServer(roomStore store.RoomStore, userStore store.UserStore, userService service.UserService) {
 	logginService := service.NewLoggingService(userService)
 	chatService := chat.NewMessageService(roomStore, userStore)
 	wsServer := api.NewWsServer(":8081", logginService, chatService)
@@ -63,15 +72,4 @@ func runWsServer(roomStore service.RoomStoreService, userStore service.UserStore
 	if err := wsServer.Run(); err != nil {
 		log.Fatalf("failed to run ws server: %v", err)
 	}
-}
-
-func newDatabase() *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
-	}
-	if err := db.AutoMigrate(&store.UserModel{}, &store.RoomModel{}); err != nil {
-		log.Fatalf("failed to migrate database: %v", err)
-	}
-	return db
 }

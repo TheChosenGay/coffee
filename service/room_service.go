@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/TheChosenGay/coffee/proto/chat_service"
+	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/types"
 )
 
@@ -22,11 +23,11 @@ type RoomService interface {
 }
 
 type roomService struct {
-	roomStore RoomStoreService
+	roomStore store.RoomStore
 	idService IdService
 }
 
-func NewRoomService(roomStore RoomStoreService, idService IdService) RoomService {
+func NewRoomService(roomStore store.RoomStore, idService IdService) RoomService {
 	return &roomService{roomStore: roomStore, idService: idService}
 }
 

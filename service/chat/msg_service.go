@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/TheChosenGay/coffee/p2p"
-	"github.com/TheChosenGay/coffee/service"
+	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/types"
 )
 
@@ -18,12 +18,12 @@ type MessageService interface {
 }
 
 type messageService struct {
-	roomStore service.RoomStoreService
-	userStore service.UserStoreService
+	roomStore store.RoomStore
+	userStore store.UserStore
 	users     sync.Map
 }
 
-func NewMessageService(roomStore service.RoomStoreService, userStore service.UserStoreService) MessageService {
+func NewMessageService(roomStore store.RoomStore, userStore store.UserStore) MessageService {
 	return &messageService{
 		roomStore: roomStore,
 		userStore: userStore,

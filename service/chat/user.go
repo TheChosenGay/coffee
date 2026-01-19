@@ -8,7 +8,7 @@ import (
 
 	"github.com/TheChosenGay/coffee/p2p"
 	"github.com/TheChosenGay/coffee/proto/chat_service"
-	"github.com/TheChosenGay/coffee/service"
+	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/types"
 	"google.golang.org/protobuf/proto"
 )
@@ -26,7 +26,7 @@ type ChatUser struct {
 	userRoles map[int]*UserRoomInfo
 
 	// store messages
-	userStore service.UserStoreService
+	userStore store.UserStore
 	// underling transport
 	conn p2p.Conn
 
