@@ -29,6 +29,9 @@ func (s *JsonUserServiceHandler) MakeJsonServiceHandler() {
 
 	// list users
 	http.HandleFunc("/user/list", WithLogTime(s.listUsers))
+
+	// get user by id
+	http.HandleFunc("/user/get", WithLogTime(s.getUserById))
 }
 
 func (s *JsonUserServiceHandler) registerUser(w http.ResponseWriter, r *http.Request) {
@@ -86,4 +89,20 @@ func (s *JsonUserServiceHandler) listUsers(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	api.WriteToJson(w, http.StatusOK, users)
+}
+
+func (s *JsonUserServiceHandler) getUserById(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userIdStr := r.URL.Query().Get("id")
+	userIdInt, err := strconv.Atoi(userIdStr)
+	if err != nil {
+		api.WriteToJson(w, http.StatusBadRequest, map[string]string{"error": "invalid user id"})
+		return
+	}
+	user, err := s.svc.GetUser(ctx, userIdInt)
+	if err != nil {
+		api.WriteToJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	api.WriteToJson(w, http.StatusOK, user)
 }
