@@ -71,6 +71,7 @@ func runUserConnServer(userStore store.UserStore) {
 		ListenAddr: ":8081",
 		UserStore:  userStore,
 	})
+	defer userConnServer.Close()
 
 	if err := userConnServer.Run(); err != nil {
 		log.Fatalf("failed to run ws server: %v", err)

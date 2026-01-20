@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheChosenGay/coffee/internal"
 	"github.com/TheChosenGay/coffee/proto/chat_service"
+	"github.com/TheChosenGay/coffee/types"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -75,4 +76,23 @@ func (u *OnlineUser) UnmarshalMsg(msg []byte) (*chat_service.ChatMessage, error)
 		return nil, err
 	}
 	return chatMessage, nil
+}
+
+// MARK: - types.Unit interface
+
+func (u *OnlineUser) Id() int {
+	return u.UserId
+}
+
+func (u *OnlineUser) NickName() string {
+	return u.UserName
+}
+
+func (u *OnlineUser) Role(roomId int) (types.RoleType, error) {
+	return types.Member, nil
+}
+
+func (u *OnlineUser) SetRole(roomId int, role types.RoleType) error {
+
+	return nil
 }

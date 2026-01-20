@@ -2,9 +2,7 @@ package api
 
 import (
 	"context"
-	"errors"
 	"log"
-	"sync"
 
 	"github.com/TheChosenGay/coffee/internal"
 	"github.com/TheChosenGay/coffee/internal/ws"
@@ -23,13 +21,11 @@ type UserConnServer struct {
 	transport internal.Transport
 	close     chan chat.OnlineUser
 
-	userStore   store.UserStore
-	chatService chat.ChatService
+	userStore     store.UserStore
+	chatService   chat.ChatService
+	onlineUserSrv chat.OnlineUserService
 
 	onlineUsers map[string]*chat.OnlineUser
-
-	mx               sync.Mutex
-	onlineUsersIdMap map[int]*chat.OnlineUser
 }
 
 func NewUserConnServer(opts WsServerOpts) *UserConnServer {
@@ -38,12 +34,12 @@ func NewUserConnServer(opts WsServerOpts) *UserConnServer {
 		transport: ws.NewWsTransport(ws.WsTransportOpts{
 			ListenAddr: opts.ListenAddr,
 		}),
-		userStore:        opts.UserStore,
-		onlineUsers:      make(map[string]*chat.OnlineUser),
-		onlineUsersIdMap: make(map[int]*chat.OnlineUser),
+		userStore:     opts.UserStore,
+		onlineUsers:   make(map[string]*chat.OnlineUser),
+		onlineUserSrv: chat.NewDefaultOnlineUserService(opts.UserStore),
 	}
 
-	chatService := chat.NewDefaultChatService(s)
+	chatService := chat.NewDefaultChatService(s.onlineUserSrv)
 	s.chatService = chatService
 	s.transport.OnRecvConn(s.onRecvConn)
 	s.transport.OnCloseConn(s.clearClosedConn)
@@ -62,24 +58,15 @@ func (s *UserConnServer) Close() error {
 	return nil
 }
 
-func (s *UserConnServer) GetOnlineUser(ctx context.Context, userId int) (*chat.OnlineUser, error) {
-	return s.getOnlineUser(userId)
-}
-
-func (s *UserConnServer) getOnlineUser(userId int) (*chat.OnlineUser, error) {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	user, ok := s.onlineUsersIdMap[userId]
-	if !ok {
-		return nil, errors.New("user not found")
-	}
-	return user, nil
-}
-
 func (s *UserConnServer) onRecvConn(conn internal.Conn) {
-	if user, ok := s.onlineUsersIdMap[conn.UserId()]; ok {
-		user.Conn.Send([]byte("another location connected."))
-		user.Conn.Close()
+	if user, err := s.onlineUserSrv.GetOnlineUser(context.Background(), conn.UserId()); err != nil {
+		if user.Conn.RemoteAddr() == conn.RemoteAddr() {
+			logrus.Warnf("user %d is already online, closing old connection", conn.UserId())
+			conn.Close()
+			return
+		} else {
+			s.onlineUserSrv.OfflineUser(context.Background(), conn.UserId())
+		}
 	}
 
 	user, err := s.userStore.GetUser(context.Background(), conn.UserId())
@@ -96,10 +83,11 @@ func (s *UserConnServer) onRecvConn(conn internal.Conn) {
 		ChatSrv:  s.chatService,
 	}
 	conn.OnRecvMsg(onlineUser.ReceiveMsg)
-
-	s.onlineUsers[conn.RemoteAddr()] = &onlineUser
-	s.onlineUsersIdMap[conn.UserId()] = &onlineUser
-
+	if err := s.onlineUserSrv.OnlineUser(context.Background(), &onlineUser); err != nil {
+		conn.Send([]byte(err.Error()))
+		conn.Close()
+		return
+	}
 	logrus.WithFields(logrus.Fields{
 		"user_name": user.Nickname,
 		"user_id":   conn.UserId(),
@@ -108,10 +96,12 @@ func (s *UserConnServer) onRecvConn(conn internal.Conn) {
 
 func (s *UserConnServer) clearClosedConn(conn internal.Conn) {
 	userId := conn.UserId()
-	delete(s.onlineUsers, conn.RemoteAddr())
-	s.mx.Lock()
-	delete(s.onlineUsersIdMap, userId)
-	s.mx.Unlock()
+	// must be closed.
+	defer conn.Close()
+
+	if err := s.onlineUserSrv.OfflineUser(context.Background(), userId); err != nil {
+		logrus.WithError(err).Error("offline user error")
+	}
 	logrus.WithFields(logrus.Fields{
 		"user_id": userId,
 	}).Info("user disconnected")

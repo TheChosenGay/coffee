@@ -12,10 +12,6 @@ type ChatService interface {
 	SendMsgToRoom(ctx context.Context, roomId int, msg *chat_service.ChatMessage) error
 }
 
-type OnlineUserService interface {
-	GetOnlineUser(ctx context.Context, userId int) (*OnlineUser, error)
-}
-
 type defaultChatService struct {
 	onlineUserService OnlineUserService
 }
@@ -33,5 +29,6 @@ func (s *defaultChatService) SendMsgToUser(ctx context.Context, userId int, msg 
 }
 
 func (s *defaultChatService) SendMsgToRoom(ctx context.Context, roomId int, msg *chat_service.ChatMessage) error {
+
 	return nil
 }
