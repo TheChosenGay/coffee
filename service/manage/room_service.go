@@ -86,7 +86,7 @@ func (s *roomService) GetRoomUnits(ctx context.Context, roomId int) ([]types.Uni
 
 func (s *roomService) JoinRoom(ctx context.Context, roomId int, unitId int) error {
 	if _, err := s.userStore.GetUser(ctx, unitId); err != nil {
-		return fmt.Errorf("user not exit: %d, %w", unitId, err)
+		return fmt.Errorf("user not exist: %d, %w", unitId, err)
 	}
 	room, err := s.roomStore.GetRoom(ctx, roomId)
 	if err != nil {
