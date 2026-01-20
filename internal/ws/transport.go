@@ -56,8 +56,12 @@ func (t *WsTransport) handleWs(ws *websocket.Conn) {
 		return
 	}
 	conn.userId = userId
-	conn.userId = userId
+	conn.closeCh = make(chan struct{})
 	t.onConnHandler(conn)
+	select {
+	case <-conn.closeCh:
+		return
+	}
 }
 
 func (t *WsTransport) Close(conn internal.Conn) error {
@@ -79,8 +83,9 @@ func (t *WsTransport) getUserId(ws *websocket.Conn) (int, error) {
 }
 
 type WsConn struct {
-	conn   *websocket.Conn
-	userId int
+	conn    *websocket.Conn
+	userId  int
+	closeCh chan struct{}
 }
 
 func (c *WsConn) Send(msg []byte) error {
@@ -111,6 +116,7 @@ func (c *WsConn) OnRecvMsg(handler internal.HandleMessageFunc) {
 }
 
 func (c *WsConn) Close() error {
+	c.closeCh <- struct{}{}
 	return c.conn.Close()
 }
 

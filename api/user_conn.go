@@ -10,6 +10,7 @@ import (
 	"github.com/TheChosenGay/coffee/internal/ws"
 	"github.com/TheChosenGay/coffee/service/chat"
 	"github.com/TheChosenGay/coffee/service/store"
+	"github.com/sirupsen/logrus"
 )
 
 type WsServerOpts struct {
@@ -57,11 +58,17 @@ func NewUserConnServer(opts WsServerOpts) *UserConnServer {
 			Conn:     conn,
 			UserId:   conn.UserId(),
 			UserName: user.Nickname,
+			ChatSrv:  s.chatService,
 		}
 		conn.OnRecvMsg(onlineUser.ReceiveMsg)
 
 		s.onlineUsers[conn.RemoteAddr()] = &onlineUser
 		s.onlineUsersIdMap[conn.UserId()] = &onlineUser
+
+		logrus.WithFields(logrus.Fields{
+			"user_name": user.Nickname,
+			"user_id":   conn.UserId(),
+		}).Info("user connected")
 	})
 	return s
 }

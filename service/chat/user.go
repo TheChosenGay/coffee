@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheChosenGay/coffee/internal"
 	"github.com/TheChosenGay/coffee/proto/chat_service"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -12,7 +13,7 @@ type OnlineUser struct {
 	UserId   int
 	UserName string
 	Conn     internal.Conn
-	chatSrv  ChatService
+	ChatSrv  ChatService
 }
 
 func (u *OnlineUser) ReceiveMsg(msg []byte) error {
@@ -21,13 +22,21 @@ func (u *OnlineUser) ReceiveMsg(msg []byte) error {
 		return err
 	}
 	if chatMsg.IsUser {
-		err = u.chatSrv.SendMsgToUser(context.Background(), int(chatMsg.TargetId), chatMsg)
+		err = u.ChatSrv.SendMsgToUser(context.Background(), int(chatMsg.TargetId), chatMsg)
 	} else {
-		err = u.chatSrv.SendMsgToRoom(context.Background(), int(chatMsg.TargetId), chatMsg)
+		err = u.ChatSrv.SendMsgToRoom(context.Background(), int(chatMsg.TargetId), chatMsg)
 	}
 	if err != nil {
 		return err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"user_id":   u.UserId,
+		"user_name": u.UserName,
+		"target_id": chatMsg.TargetId,
+		"contents":  chatMsg.Contents,
+		"is_user":   chatMsg.IsUser,
+	}).Info("received message")
 	return nil
 }
 
