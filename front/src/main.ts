@@ -6,9 +6,21 @@ import { ChatClient } from './chat';
 const roomAPI = new RoomAPI();
 const userAPI = new UserAPI();
 
-// 当前房间状态
-let currentRoomId: number | null = null;
-let currentUserId: number | null = null;
+// 房间状态管理
+interface RoomState {
+  roomId: number;
+  userId: number | null; // 当前用户是否在此房间
+  units: RoomUnit[];
+  messages: Array<{
+    userId: number;
+    nickname: string;
+    message: string;
+    time: Date;
+  }>;
+  chatClient: ChatClient | null; // 用于发送消息的客户端
+}
+
+const roomStates = new Map<number, RoomState>();
 
 // DOM 元素 - Rooms
 const roomsContainer = document.getElementById('rooms')!;
@@ -52,23 +64,90 @@ async function renderRooms() {
       return;
     }
     
-    roomsContainer.innerHTML = rooms.map(room => `
-      <div class="room-card">
-        <div class="room-info">
-          <h3>房间 #${room.room_id}</h3>
-          <div class="room-details">
-            <span class="detail">👥 最大容量: ${room.max_unit_size}</span>
-            <span class="detail status" style="color: ${getStateColor(room.state)}">
-              ● ${getStateName(room.state)}
-            </span>
+    // 为每个房间创建卡片
+    roomsContainer.innerHTML = rooms.map(room => {
+      const state = roomStates.get(room.room_id) || {
+        roomId: room.room_id,
+        userId: null,
+        units: [],
+        messages: [],
+        chatClient: null
+      };
+      roomStates.set(room.room_id, state);
+      
+      const isJoined = state.userId !== null;
+      
+      return `
+      <div class="room-card" data-room-id="${room.room_id}">
+        <div class="room-header">
+          <div class="room-info">
+            <h3>房间 #${room.room_id}</h3>
+            <div class="room-details">
+              <span class="detail">👥 最大容量: ${room.max_unit_size}</span>
+              <span class="detail status" style="color: ${getStateColor(room.state)}">
+                ● ${getStateName(room.state)}
+              </span>
+            </div>
+          </div>
+          <div class="room-actions">
+            ${isJoined 
+              ? `<button class="quit-room-btn" data-room-id="${room.room_id}">退出房间</button>`
+              : `<button class="join-btn" data-room-id="${room.room_id}">加入房间</button>`
+            }
+            <button class="delete-btn" data-room-id="${room.room_id}">删除</button>
           </div>
         </div>
-        <div class="room-actions">
-          <button class="join-btn" data-room-id="${room.room_id}">加入房间</button>
-          <button class="delete-btn" data-room-id="${room.room_id}">删除</button>
+        
+        ${isJoined ? `
+        <div class="room-content">
+          <div class="room-online-users">
+            <h4>👥 在线用户 (${state.units.length})</h4>
+            <div class="room-units-list">
+              ${state.units.length === 0 
+                ? '<p class="empty">当前没有在线用户</p>' 
+                : state.units.map(unit => `
+                    <div class="room-unit-item">
+                      <span class="unit-avatar">👤</span>
+                      <span class="unit-name">${escapeHtml(unit.nickname || `用户 ${unit.id}`)}</span>
+                      <span class="unit-id">(ID: ${unit.id})</span>
+                    </div>
+                  `).join('')
+              }
+            </div>
+          </div>
+          
+          <div class="room-chat">
+            <div class="room-chat-header">
+              <h4>💬 聊天记录</h4>
+              <button class="clear-chat-btn" data-room-id="${room.room_id}">清空</button>
+            </div>
+            <div class="room-chat-messages" data-room-id="${room.room_id}">
+              ${state.messages.length === 0
+                ? '<p class="empty">暂无消息</p>'
+                : state.messages.map(msg => `
+                    <div class="room-message">
+                      <span class="message-sender">${escapeHtml(msg.nickname)}</span>
+                      <span class="message-time">${msg.time.toLocaleTimeString()}</span>
+                      <div class="message-text">${escapeHtml(msg.message)}</div>
+                    </div>
+                  `).join('')
+              }
+            </div>
+            <div class="room-chat-input">
+              <input 
+                type="text" 
+                class="room-message-input" 
+                data-room-id="${room.room_id}"
+                placeholder="输入消息..."
+              />
+              <button class="room-send-btn" data-room-id="${room.room_id}">发送</button>
+            </div>
+          </div>
         </div>
+        ` : ''}
       </div>
-    `).join('');
+    `;
+    }).join('');
     
     // 添加加入房间按钮事件
     document.querySelectorAll('.join-btn').forEach(btn => {
@@ -76,6 +155,55 @@ async function renderRooms() {
       if (roomId) {
         btn.addEventListener('click', () => {
           showJoinRoomDialog(parseInt(roomId));
+        });
+      }
+    });
+    
+    // 添加退出房间按钮事件
+    document.querySelectorAll('.quit-room-btn').forEach(btn => {
+      const roomId = (btn as HTMLElement).dataset.roomId;
+      if (roomId) {
+        btn.addEventListener('click', () => {
+          const state = roomStates.get(parseInt(roomId));
+          if (state && state.userId) {
+            quitRoom(parseInt(roomId), state.userId);
+          }
+        });
+      }
+    });
+    
+    // 添加发送消息按钮事件
+    document.querySelectorAll('.room-send-btn').forEach(btn => {
+      const roomId = (btn as HTMLElement).dataset.roomId;
+      if (roomId) {
+        btn.addEventListener('click', () => {
+          sendRoomMessage(parseInt(roomId));
+        });
+      }
+    });
+    
+    // 添加回车发送消息
+    document.querySelectorAll('.room-message-input').forEach(input => {
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          const roomId = (e.target as HTMLElement).dataset.roomId;
+          if (roomId) {
+            sendRoomMessage(parseInt(roomId));
+          }
+        }
+      });
+    });
+    
+    // 添加清空聊天记录按钮事件
+    document.querySelectorAll('.clear-chat-btn').forEach(btn => {
+      const roomId = (btn as HTMLElement).dataset.roomId;
+      if (roomId) {
+        btn.addEventListener('click', () => {
+          const state = roomStates.get(parseInt(roomId));
+          if (state) {
+            state.messages = [];
+            renderRooms();
+          }
         });
       }
     });
@@ -89,6 +217,9 @@ async function renderRooms() {
         });
       }
     });
+    
+    // 注意：不在这里刷新在线用户列表，避免循环调用
+    // 在线用户列表会在加入房间时刷新，或通过其他事件触发刷新
     
   } catch (error) {
     roomsContainer.innerHTML = `
@@ -184,12 +315,45 @@ function showJoinRoomDialog(roomId: number) {
 async function joinRoom(roomId: number, userId: number) {
   try {
     await roomAPI.joinRoom(roomId, userId);
-    currentRoomId = roomId;
-    currentUserId = userId;
+    
+    // 获取或创建房间状态
+    let state = roomStates.get(roomId);
+    if (!state) {
+      state = {
+        roomId,
+        userId: null,
+        units: [],
+        messages: [],
+        chatClient: null
+      };
+      roomStates.set(roomId, state);
+    }
+    
+    // 查找对应的WebSocket连接
+    let chatClient: ChatClient | null = null;
+    for (const [connId, conn] of connections) {
+      if (conn.userId === userId && conn.client.isConnected()) {
+        chatClient = conn.client;
+        break;
+      }
+    }
+    
+    if (!chatClient) {
+      throw new Error('请先通过WebSocket连接（在"聊天"标签页创建连接）');
+    }
+    
+    // 设置房间状态
+    state.userId = userId;
+    state.chatClient = chatClient;
+    
+    // 刷新在线用户列表（不更新UI，因为后面会调用renderRooms）
+    await refreshRoomUnits(roomId, false);
+    
+    // 设置房间消息监听（如果还没有设置）
+    setupRoomMessageListener(roomId, userId, chatClient);
+    
     showNotification(`✅ 成功加入房间 #${roomId}！`, 'success');
-    // 显示房间详情
-    showRoomDetail(roomId);
-    // 刷新房间列表
+    // 刷新房间列表以显示新UI
     await renderRooms();
   } catch (error) {
     const message = error instanceof Error ? error.message : '未知错误';
@@ -197,105 +361,156 @@ async function joinRoom(roomId: number, userId: number) {
   }
 }
 
+// 刷新房间在线用户列表
+async function refreshRoomUnits(roomId: number, updateUI: boolean = true) {
+  try {
+    const units = await roomAPI.getRoomUnits(roomId);
+    const state = roomStates.get(roomId);
+    if (state) {
+      state.units = units;
+      // 如果房间已加入且需要更新UI，只更新该房间的UI
+      if (state.userId !== null && updateUI) {
+        updateRoomCardUI(roomId);
+      }
+    }
+  } catch (error) {
+    console.error('刷新房间在线用户失败:', error);
+  }
+}
+
+// 只更新特定房间卡片的UI，而不是重新渲染整个列表
+function updateRoomCardUI(roomId: number) {
+  const state = roomStates.get(roomId);
+  if (!state || state.userId === null) {
+    return;
+  }
+  
+  const roomCard = document.querySelector(`.room-card[data-room-id="${roomId}"]`) as HTMLElement;
+  if (!roomCard) {
+    return;
+  }
+  
+  // 更新在线用户列表
+  const unitsList = roomCard.querySelector('.room-units-list');
+  if (unitsList) {
+    unitsList.innerHTML = state.units.length === 0 
+      ? '<p class="empty">当前没有在线用户</p>' 
+      : state.units.map(unit => `
+          <div class="room-unit-item">
+            <span class="unit-avatar">👤</span>
+            <span class="unit-name">${escapeHtml(unit.nickname || `用户 ${unit.id}`)}</span>
+            <span class="unit-id">(ID: ${unit.id})</span>
+          </div>
+        `).join('');
+  }
+  
+  // 更新在线用户数量
+  const unitsHeader = roomCard.querySelector('.room-online-users h4');
+  if (unitsHeader) {
+    unitsHeader.textContent = `👥 在线用户 (${state.units.length})`;
+  }
+  
+  // 更新聊天记录
+  const messagesContainer = roomCard.querySelector('.room-chat-messages') as HTMLElement;
+  if (messagesContainer) {
+    messagesContainer.innerHTML = state.messages.length === 0
+      ? '<p class="empty">暂无消息</p>'
+      : state.messages.map(msg => `
+          <div class="room-message">
+            <span class="message-sender">${escapeHtml(msg.nickname)}</span>
+            <span class="message-time">${msg.time.toLocaleTimeString()}</span>
+            <div class="message-text">${escapeHtml(msg.message)}</div>
+          </div>
+        `).join('');
+    
+    // 滚动到底部
+    setTimeout(() => {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 10);
+  }
+}
+
+// 设置房间消息监听
+function setupRoomMessageListener(roomId: number, userId: number, chatClient: ChatClient) {
+  // 检查是否已经设置过监听器
+  const state = roomStates.get(roomId);
+  if (state && (state as any).listenerSetup) {
+    return; // 已经设置过，避免重复设置
+  }
+  
+  // 标记已设置监听器
+  if (state) {
+    (state as any).listenerSetup = true;
+  }
+  
+  // 监听消息（在现有的onMessage回调中处理）
+  // 注意：这里我们需要确保房间消息能被正确处理
+  // 由于ChatClient的onMessage是全局的，我们需要在全局消息处理中识别房间消息
+}
+
+// 发送房间消息
+async function sendRoomMessage(roomId: number) {
+  const state = roomStates.get(roomId);
+  if (!state || !state.userId || !state.chatClient) {
+    showNotification('❌ 请先加入房间', 'error');
+    return;
+  }
+  
+  const input = document.querySelector(`.room-message-input[data-room-id="${roomId}"]`) as HTMLInputElement;
+  if (!input) {
+    return;
+  }
+  
+  const message = input.value.trim();
+  if (!message) {
+    return;
+  }
+  
+  try {
+    await state.chatClient.sendRoomMessage(roomId, message);
+    
+    // 获取用户昵称
+    const unit = state.units.find(u => u.id === state.userId);
+    const nickname = unit?.nickname || `用户 ${state.userId}`;
+    
+    // 添加到消息列表
+    state.messages.push({
+      userId: state.userId!,
+      nickname,
+      message,
+      time: new Date()
+    });
+    
+    // 清空输入框
+    input.value = '';
+    
+    // 只更新该房间的UI，而不是重新渲染整个列表
+    updateRoomCardUI(roomId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '未知错误';
+    showNotification(`❌ 发送消息失败: ${message}`, 'error');
+  }
+}
+
 // 退出房间
 async function quitRoom(roomId: number, userId: number) {
   try {
     await roomAPI.quitRoom(roomId, userId);
-    currentRoomId = null;
-    currentUserId = null;
+    
+    // 清理房间状态
+    const state = roomStates.get(roomId);
+    if (state) {
+      state.userId = null;
+      state.chatClient = null;
+      // 保留消息和在线用户列表，以便重新加入时可以看到
+    }
+    
     showNotification(`✅ 成功退出房间 #${roomId}！`, 'success');
-    // 隐藏房间详情
-    hideRoomDetail();
     // 刷新房间列表
     await renderRooms();
   } catch (error) {
     const message = error instanceof Error ? error.message : '未知错误';
     showNotification(`❌ 退出房间失败: ${message}`, 'error');
-  }
-}
-
-// 显示房间详情
-async function showRoomDetail(roomId: number) {
-  // 获取房间详情容器（应该在HTML中已经存在）
-  let detailContainer = document.getElementById('room-detail-container');
-  if (!detailContainer) {
-    // 如果不存在，创建它并插入到房间列表之前
-    detailContainer = document.createElement('div');
-    detailContainer.id = 'room-detail-container';
-    detailContainer.className = 'room-detail-container';
-    // 插入到房间列表之前
-    if (roomsContainer.parentElement) {
-      roomsContainer.parentElement.insertBefore(detailContainer, roomsContainer);
-    }
-  }
-  
-  detailContainer.innerHTML = '<p class="loading">加载中...</p>';
-  detailContainer.style.display = 'block';
-  
-  try {
-    const units = await roomAPI.getRoomUnits(roomId);
-    
-    detailContainer.innerHTML = `
-      <div class="room-detail-header">
-        <h2>🏠 房间 #${roomId}</h2>
-        ${currentUserId ? `<button class="quit-room-btn" data-room-id="${roomId}" data-user-id="${currentUserId}">退出房间</button>` : ''}
-      </div>
-      <div class="room-detail-content">
-        <h3>👥 在线用户 (${units.length})</h3>
-        <div class="room-units-list">
-          ${units.length === 0 
-            ? '<p class="empty">当前没有在线用户</p>' 
-            : units.map(unit => `
-                <div class="room-unit-card">
-                  <div class="unit-info">
-                    <span class="unit-avatar">👤</span>
-                    <div class="unit-details">
-                      <span class="unit-name">${escapeHtml(unit.nickname || `用户 ${unit.id}`)}</span>
-                      <span class="unit-id">ID: ${unit.id}</span>
-                    </div>
-                  </div>
-                </div>
-              `).join('')
-          }
-        </div>
-      </div>
-    `;
-    
-    // 添加退出房间按钮事件
-    const quitBtn = detailContainer.querySelector('.quit-room-btn');
-    if (quitBtn) {
-      quitBtn.addEventListener('click', () => {
-        const roomIdAttr = (quitBtn as HTMLElement).dataset.roomId;
-        const userIdAttr = (quitBtn as HTMLElement).dataset.userId;
-        if (roomIdAttr && userIdAttr) {
-          quitRoom(parseInt(roomIdAttr), parseInt(userIdAttr));
-        }
-      });
-    }
-    
-    // 定期刷新在线用户列表
-    if (currentRoomId === roomId) {
-      setTimeout(() => {
-        if (currentRoomId === roomId) {
-          showRoomDetail(roomId);
-        }
-      }, 3000); // 每3秒刷新一次
-    }
-  } catch (error) {
-    detailContainer.innerHTML = `
-      <div class="error">
-        <h3>❌ 错误</h3>
-        <p>${error instanceof Error ? error.message : '未知错误'}</p>
-      </div>
-    `;
-  }
-}
-
-// 隐藏房间详情
-function hideRoomDetail() {
-  const detailContainer = document.getElementById('room-detail-container');
-  if (detailContainer) {
-    detailContainer.style.display = 'none';
   }
 }
 
@@ -307,13 +522,9 @@ async function deleteRoom(roomId: number) {
   
   try {
     await roomAPI.deleteRoom(roomId);
+    // 清理房间状态
+    roomStates.delete(roomId);
     showNotification(`✅ 房间 #${roomId} 删除成功！`, 'success');
-    // 如果删除的是当前房间，隐藏详情
-    if (currentRoomId === roomId) {
-      hideRoomDetail();
-      currentRoomId = null;
-      currentUserId = null;
-    }
     await renderRooms();
   } catch (error) {
     const message = error instanceof Error ? error.message : '未知错误';
@@ -683,34 +894,74 @@ function createConnectionCard(userId?: number): ConnectionInfo {
     console.log(`   消息总数: ${messageCount}`);
     console.log('');
     
-    // 接收到的消息：target_id是目标用户ID（即接收者的ID）
-    // 只有当target_id等于当前连接的用户ID时，才显示这条消息
-    // 确保类型一致（都转换为数字）
     const targetIdNum = Number(data.target_id) || 0;
     const currentUserIdNum = Number(currentUserId) || 0;
     
-    console.log('');
-    console.log('🔍 ========== ID匹配检查 ==========');
-    console.log(`   接收者ID (targetIdNum): ${targetIdNum}`);
-    console.log(`   接收者ID类型: ${typeof targetIdNum}`);
-    console.log(`   当前用户ID (currentUserIdNum): ${currentUserIdNum}`);
-    console.log(`   当前用户ID类型: ${typeof currentUserIdNum}`);
-    console.log('');
-    console.log('   比较结果:');
-    console.log(`     targetIdNum === currentUserIdNum: ${targetIdNum === currentUserIdNum}`);
-    console.log(`     targetIdNum == currentUserIdNum: ${targetIdNum == currentUserIdNum}`);
-    console.log(`     targetIdNum !== currentUserIdNum: ${targetIdNum !== currentUserIdNum}`);
-    console.log(`     Number(targetIdNum) === Number(currentUserIdNum): ${Number(targetIdNum) === Number(currentUserIdNum)}`);
-    console.log(`     String(targetIdNum) === String(currentUserIdNum): ${String(targetIdNum) === String(currentUserIdNum)}`);
-    console.log('');
+    // 处理房间消息（is_user === false）
+    if (!data.is_user) {
+      const roomId = targetIdNum;
+      const state = roomStates.get(roomId);
+      
+      if (state && state.userId !== null) {
+        // 提取消息内容
+        const messages: string[] = [];
+        contents.forEach((content) => {
+          const msgs = content.content || [];
+          messages.push(...msgs);
+        });
+        
+        // 注意：当前协议中没有sender_id字段
+        // 由于房间消息是广播的，我们无法直接知道发送者
+        // 但我们可以检查是否是当前用户发送的（通过检查最近发送的消息）
+        // 如果不是，则标记为"房间消息"
+        let senderId = 0;
+        let senderNickname = '房间消息';
+        
+        // 检查是否是当前用户刚发送的消息（通过比较最后一条消息）
+        if (state.messages.length > 0) {
+          const lastMsg = state.messages[state.messages.length - 1];
+          if (lastMsg) {
+            // 如果最后一条消息的时间很近（1秒内）且内容匹配，可能是当前用户发送的
+            const timeDiff = Date.now() - lastMsg.time.getTime();
+            if (timeDiff < 1000 && messages.length > 0 && lastMsg.message === messages[0]) {
+              senderId = state.userId;
+              const unit = state.units.find(u => u.id === state.userId);
+              senderNickname = unit?.nickname || `用户 ${state.userId}`;
+            }
+          }
+        }
+        
+        // 添加消息到房间状态（避免重复添加自己发送的消息）
+        messages.forEach((msg, index) => {
+          // 如果是第一条消息且可能是自己发送的，跳过（因为已经在sendRoomMessage中添加了）
+          if (index === 0 && senderId === state.userId && state.messages.length > 0) {
+            const lastMsg = state.messages[state.messages.length - 1];
+            if (lastMsg && lastMsg.message === msg && lastMsg.userId === senderId) {
+              return; // 跳过重复消息
+            }
+          }
+          
+          state.messages.push({
+            userId: senderId,
+            nickname: senderNickname,
+            message: msg,
+            time: new Date()
+          });
+        });
+        
+        // 只更新该房间的UI，而不是重新渲染整个列表
+        updateRoomCardUI(roomId);
+        
+        console.log(`✅ 房间消息已添加到房间 #${roomId}`);
+        return;
+      }
+    }
     
+    // 处理用户消息（is_user === true）
+    // 只有当target_id等于当前连接的用户ID时，才显示这条消息
     if (targetIdNum !== currentUserIdNum) {
       console.log('⚠️  ========== 消息被忽略 ==========');
       console.log(`   原因: 接收者ID(${targetIdNum}) 与当前用户ID(${currentUserIdNum}) 不匹配`);
-      console.log(`   原始接收者ID: ${data.target_id} (类型: ${typeof data.target_id})`);
-      console.log(`   原始当前用户ID: ${currentUserId} (类型: ${typeof currentUserId})`);
-      console.log('═══════════════════════════════════════════════════════════');
-      console.log('\n');
       return;
     }
     

@@ -363,6 +363,50 @@ export class ChatClient {
     }
   }
 
+  async sendRoomMessage(roomId: number, message: string): Promise<void> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('WebSocket未连接，状态:', this.ws?.readyState);
+      throw new Error('WebSocket未连接');
+    }
+
+    await initProtobuf();
+    
+    if (!ChatMessage || !Content) {
+      throw new Error('Protobuf未初始化');
+    }
+
+    const content = Content.create({ content: [message] });
+    const chatMessage = ChatMessage.create({
+      targetId: roomId,
+      isUser: false,  // 房间消息
+      contents: [content]
+    });
+
+    // 验证消息
+    const errMsg = ChatMessage.verify(chatMessage);
+    if (errMsg) {
+      console.error('消息验证失败:', errMsg);
+      throw new Error(`消息验证失败: ${errMsg}`);
+    }
+
+    const buffer = ChatMessage.encode(chatMessage).finish();
+    
+    console.log('发送房间消息:', {
+      userId: this.userId,
+      roomId,
+      message,
+      bufferLength: buffer.length
+    });
+    
+    try {
+      this.ws.send(buffer);
+      console.log('房间消息已发送');
+    } catch (error) {
+      console.error('发送房间消息时出错:', error);
+      throw error;
+    }
+  }
+
   onMessage(callback: (data: ChatMessageData) => void): void {
     console.log('🔧 ========== 设置 onMessage 回调 ==========');
     console.log('回调函数:', callback);
