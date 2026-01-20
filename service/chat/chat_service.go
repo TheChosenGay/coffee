@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/TheChosenGay/coffee/proto/chat_service"
 )
@@ -26,7 +27,7 @@ func NewDefaultChatService(onlineUserService OnlineUserService) ChatService {
 func (s *defaultChatService) SendMsgToUser(ctx context.Context, userId int, msg *chat_service.ChatMessage) error {
 	onlineUser, err := s.onlineUserService.GetOnlineUser(ctx, userId)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get online user:%d, error: %w", userId, err)
 	}
 	return onlineUser.SendMsg(msg)
 }
