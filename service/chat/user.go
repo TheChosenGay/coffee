@@ -48,6 +48,13 @@ func (u *OnlineUser) SendMsg(msg *chat_service.ChatMessage) error {
 	if err := u.Conn.Send(marshaledMsg); err != nil {
 		return err
 	}
+	logrus.WithFields(logrus.Fields{
+		"user_id":   u.UserId,
+		"user_name": u.UserName,
+		"target_id": msg.TargetId,
+		"contents":  msg.Contents,
+		"is_user":   msg.IsUser,
+	}).Info("sent message")
 	return nil
 }
 
