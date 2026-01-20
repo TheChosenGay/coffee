@@ -73,3 +73,42 @@ func (s *JsonRoomServiceHandler) listRooms(w http.ResponseWriter, r *http.Reques
 
 	json.NewEncoder(w).Encode(rooms)
 }
+
+func (s *JsonRoomServiceHandler) joinRoom(w http.ResponseWriter, r *http.Request) {
+	roomIdStr := r.URL.Query().Get("room_id")
+	userIdStr := r.URL.Query().Get("user_id")
+	roomId, err := strconv.Atoi(roomIdStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	userId, err := strconv.Atoi(userIdStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	ctx := context.WithValue(r.Context(), "requestId", rand.Int64N(1000000))
+	err = s.svc.JoinRoom(ctx, roomId, userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	api.WriteToJson(w, http.StatusOK, map[string]string{"message": fmt.Sprintf("user %d joined room %d successfully", userId, roomId)})
+}
+
+func (s *JsonRoomServiceHandler) quitRoom(w http.ResponseWriter, r *http.Request) {
+	roomIdStr := r.URL.Query().Get("room_id")
+	userIdStr := r.URL.Query().Get("user_id")
+	roomId, err := strconv.Atoi(roomIdStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	userId, err := strconv.Atoi(userIdStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	ctx := context.WithValue(r.Context(), "requestId", rand.Int64N(1000000))
+	if err := s.svc.QuitRoom(ctx, roomId, userId); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	api.WriteToJson(w, http.StatusOK, map[string]string{"message": fmt.Sprintf("user %d quit room %d successfully", userId, roomId)})
+}
