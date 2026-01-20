@@ -49,8 +49,9 @@ func (s *CacheUserStore) GetUser(ctx context.Context, id int) (types.User, error
 	}
 
 	user, err = s.db.GetUser(ctx, id)
-	if err != nil {
-		return types.User{UserId: types.InvalidUserId}, err
+	if err != nil || !user.IsValid() {
+		// if user not found, set invalid user to cache to prevent cache miss
+		user = types.User{UserId: types.InvalidUserId}
 	}
 
 	go func() {

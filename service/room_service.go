@@ -17,9 +17,6 @@ type RoomService interface {
 
 	BanRoom(ctx context.Context, roomId int) error
 	UnBanRoom(ctx context.Context, roomId int) error
-
-	JoinRoom(ctx context.Context, unit types.Unit, roomId int) error
-	QuitRoom(ctx context.Context, unit types.Unit, roomId int) error
 }
 
 type roomService struct {
@@ -79,22 +76,6 @@ func (s *roomService) UnBanRoom(ctx context.Context, roomId int) error {
 	}
 	room.State = types.RoomStateNormal
 	return s.roomStore.UpdateRoom(ctx, room)
-}
-
-func (s *roomService) JoinRoom(ctx context.Context, unit types.Unit, roomId int) error {
-	room, err := s.roomStore.GetRoom(ctx, roomId)
-	if err != nil {
-		return err
-	}
-	room.Units = append(room.Units, unit)
-	unit.SetRole(roomId, types.Member)
-	unit.ReceiveMsg(types.NewSignalMessage(types.SignalTypeRoomJoined, roomId, unit.Id(), []*chat_service.Content{}))
-
-	return s.roomStore.UpdateRoom(ctx, room)
-}
-
-func (s *roomService) QuitRoom(ctx context.Context, unit types.Unit, roomId int) error {
-	return nil
 }
 
 func (s *roomService) CreateRoomBySize(ctx context.Context, maxUnitSize int) (int, error) {

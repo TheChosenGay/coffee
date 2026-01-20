@@ -32,11 +32,11 @@ func RunWsUserClient() {
 	for {
 		if scanner.Scan() {
 			input := scanner.Text()
-			msg := &chat_service.Message{
-				RoomId: 1,
+			msg := &chat_service.ChatMessage{
+				TargetId: 1,
 				Contents: []*chat_service.Content{
 					{
-						Content: input,
+						Content: []string{input},
 					},
 				},
 			}

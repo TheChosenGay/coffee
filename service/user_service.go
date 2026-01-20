@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 
 	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/types"
@@ -40,6 +41,7 @@ func (s *userService) DeleteUser(ctx context.Context, id int) error {
 }
 
 func (s *userService) GetUser(ctx context.Context, id int) (types.User, error) {
+	log.Printf("get user: %d\n", ctx.Value("requestId"))
 	return s.store.GetUser(ctx, id)
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/TheChosenGay/coffee/api/grpc_handler"
 	"github.com/TheChosenGay/coffee/api/json_handler"
 	"github.com/TheChosenGay/coffee/service"
-	"github.com/TheChosenGay/coffee/service/chat"
 	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/service/store/cache_store"
 	"github.com/TheChosenGay/coffee/service/store/gorm_store"
@@ -34,7 +33,7 @@ func main() {
 	// use one coffee servive for both json and grpc
 	go runJsonServer(cs, roomStore, userService)
 	go runGrpcServer(cs)
-	go runWsServer(roomStore, userStore, userService)
+	go runUserConnServer(cachedUserStore)
 	select {}
 }
 
@@ -67,13 +66,13 @@ func runGrpcServer(cs service.CoffeeService) {
 }
 
 // start websocket server
-func runWsServer(roomStore store.RoomStore, userStore store.UserStore, userService service.UserService) {
-	logginService := service.NewLoggingService(userService)
-	chatService := chat.NewMessageService(roomStore, userStore)
-	wsServer := api.NewWsServer(":8081", logginService, chatService)
-	// 服务需要能够拿到对应的用户
+func runUserConnServer(userStore store.UserStore) {
+	userConnServer := api.NewUserConnServer(api.WsServerOpts{
+		ListenAddr: ":8081",
+		UserStore:  userStore,
+	})
 
-	if err := wsServer.Run(); err != nil {
+	if err := userConnServer.Run(); err != nil {
 		log.Fatalf("failed to run ws server: %v", err)
 	}
 }

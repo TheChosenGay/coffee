@@ -7,12 +7,11 @@
 package chat_service
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -24,7 +23,7 @@ const (
 
 type Content struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Content       string                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	Content       []string               `protobuf:"bytes,1,rep,name=content,proto3" json:"content,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -59,36 +58,36 @@ func (*Content) Descriptor() ([]byte, []int) {
 	return file_chat_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Content) GetContent() string {
+func (x *Content) GetContent() []string {
 	if x != nil {
 		return x.Content
 	}
-	return ""
+	return nil
 }
 
-type Message struct {
+type ChatMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	RoomId        int32                  `protobuf:"varint,1,opt,name=RoomId,proto3" json:"RoomId,omitempty"`
-	SenderId      int32                  `protobuf:"varint,2,opt,name=SenderId,proto3" json:"SenderId,omitempty"`
-	Contents      []*Content             `protobuf:"bytes,3,rep,name=Contents,proto3" json:"Contents,omitempty"`
+	TargetId      int32                  `protobuf:"varint,1,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	IsUser        bool                   `protobuf:"varint,2,opt,name=is_user,json=isUser,proto3" json:"is_user,omitempty"`
+	Contents      []*Content             `protobuf:"bytes,3,rep,name=contents,proto3" json:"contents,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Message) Reset() {
-	*x = Message{}
+func (x *ChatMessage) Reset() {
+	*x = ChatMessage{}
 	mi := &file_chat_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Message) String() string {
+func (x *ChatMessage) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Message) ProtoMessage() {}
+func (*ChatMessage) ProtoMessage() {}
 
-func (x *Message) ProtoReflect() protoreflect.Message {
+func (x *ChatMessage) ProtoReflect() protoreflect.Message {
 	mi := &file_chat_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -100,26 +99,26 @@ func (x *Message) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Message.ProtoReflect.Descriptor instead.
-func (*Message) Descriptor() ([]byte, []int) {
+// Deprecated: Use ChatMessage.ProtoReflect.Descriptor instead.
+func (*ChatMessage) Descriptor() ([]byte, []int) {
 	return file_chat_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Message) GetRoomId() int32 {
+func (x *ChatMessage) GetTargetId() int32 {
 	if x != nil {
-		return x.RoomId
+		return x.TargetId
 	}
 	return 0
 }
 
-func (x *Message) GetSenderId() int32 {
+func (x *ChatMessage) GetIsUser() bool {
 	if x != nil {
-		return x.SenderId
+		return x.IsUser
 	}
-	return 0
+	return false
 }
 
-func (x *Message) GetContents() []*Content {
+func (x *ChatMessage) GetContents() []*Content {
 	if x != nil {
 		return x.Contents
 	}
@@ -133,11 +132,11 @@ const file_chat_proto_rawDesc = "" +
 	"\n" +
 	"chat.proto\"#\n" +
 	"\aContent\x12\x18\n" +
-	"\acontent\x18\x01 \x01(\tR\acontent\"c\n" +
-	"\aMessage\x12\x16\n" +
-	"\x06RoomId\x18\x01 \x01(\x05R\x06RoomId\x12\x1a\n" +
-	"\bSenderId\x18\x02 \x01(\x05R\bSenderId\x12$\n" +
-	"\bContents\x18\x03 \x03(\v2\b.ContentR\bContentsB\x10Z\x0e./chat_serviceb\x06proto3"
+	"\acontent\x18\x01 \x03(\tR\acontent\"i\n" +
+	"\vChatMessage\x12\x1b\n" +
+	"\ttarget_id\x18\x01 \x01(\x05R\btargetId\x12\x17\n" +
+	"\ais_user\x18\x02 \x01(\bR\x06isUser\x12$\n" +
+	"\bcontents\x18\x03 \x03(\v2\b.ContentR\bcontentsB\x10Z\x0e./chat_serviceb\x06proto3"
 
 var (
 	file_chat_proto_rawDescOnce sync.Once
@@ -153,11 +152,11 @@ func file_chat_proto_rawDescGZIP() []byte {
 
 var file_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_chat_proto_goTypes = []any{
-	(*Content)(nil), // 0: Content
-	(*Message)(nil), // 1: Message
+	(*Content)(nil),     // 0: Content
+	(*ChatMessage)(nil), // 1: ChatMessage
 }
 var file_chat_proto_depIdxs = []int32{
-	0, // 0: Message.Contents:type_name -> Content
+	0, // 0: ChatMessage.contents:type_name -> Content
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
