@@ -5,7 +5,7 @@ type HandleConnFunc func(conn Conn)
 type Transport interface {
 	ListenAndServe() error
 	OnRecvConn(handler HandleConnFunc)
-	Close(conn Conn) error
+	OnCloseConn(handler HandleConnFunc)
 }
 
 type HandleMessageFunc func(msg []byte) error

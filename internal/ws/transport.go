@@ -7,6 +7,7 @@ import (
 
 	"github.com/TheChosenGay/coffee/internal"
 	"github.com/TheChosenGay/coffee/types"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/websocket"
 )
 
@@ -22,7 +23,8 @@ type WsTransport struct {
 
 	CloseCh chan internal.Conn
 
-	onConnHandler internal.HandleConnFunc
+	onConnHandler      internal.HandleConnFunc
+	onCloseConnHandler internal.HandleConnFunc
 }
 
 func NewWsTransport(opts WsTransportOpts) *WsTransport {
@@ -60,6 +62,7 @@ func (t *WsTransport) handleWs(ws *websocket.Conn) {
 	t.onConnHandler(conn)
 	select {
 	case <-conn.closeCh:
+		t.onCloseConnHandler(conn)
 		return
 	}
 }
@@ -71,6 +74,10 @@ func (t *WsTransport) Close(conn internal.Conn) error {
 
 func (t *WsTransport) OnRecvConn(handler internal.HandleConnFunc) {
 	t.onConnHandler = handler
+}
+
+func (t *WsTransport) OnCloseConn(handler internal.HandleConnFunc) {
+	t.onCloseConnHandler = handler
 }
 
 func (t *WsTransport) getUserId(ws *websocket.Conn) (int, error) {
@@ -108,9 +115,12 @@ func (c *WsConn) OnRecvMsg(handler internal.HandleMessageFunc) {
 		for {
 			n, err := c.conn.Read(msg)
 			if err != nil {
+				c.Close()
 				return
 			}
-			handler(msg[:n])
+			if err := handler(msg[:n]); err != nil {
+				logrus.WithError(err).Error("failed to send message")
+			}
 		}
 	}()
 }

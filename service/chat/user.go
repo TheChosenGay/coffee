@@ -21,6 +21,15 @@ func (u *OnlineUser) ReceiveMsg(msg []byte) error {
 	if err != nil {
 		return err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"user_id":   u.UserId,
+		"user_name": u.UserName,
+		"target_id": chatMsg.TargetId,
+		"contents":  chatMsg.Contents,
+		"is_user":   chatMsg.IsUser,
+	}).Info("received message")
+
 	if chatMsg.IsUser {
 		err = u.ChatSrv.SendMsgToUser(context.Background(), int(chatMsg.TargetId), chatMsg)
 	} else {
@@ -30,13 +39,6 @@ func (u *OnlineUser) ReceiveMsg(msg []byte) error {
 		return err
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"user_id":   u.UserId,
-		"user_name": u.UserName,
-		"target_id": chatMsg.TargetId,
-		"contents":  chatMsg.Contents,
-		"is_user":   chatMsg.IsUser,
-	}).Info("received message")
 	return nil
 }
 

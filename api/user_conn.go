@@ -48,7 +48,7 @@ func NewUserConnServer(opts WsServerOpts) *UserConnServer {
 
 	s.transport.OnRecvConn(func(conn internal.Conn) {
 		user, err := s.userStore.GetUser(context.Background(), conn.UserId())
-		if err != nil {
+		if err != nil || !user.IsValid() {
 			conn.Send([]byte("User not found"))
 			conn.Close()
 			return
@@ -70,31 +70,31 @@ func NewUserConnServer(opts WsServerOpts) *UserConnServer {
 			"user_id":   conn.UserId(),
 		}).Info("user connected")
 	})
+
+	s.transport.OnCloseConn(s.clearClosedConn)
 	return s
 }
 
 func (s *UserConnServer) Run() error {
 	log.Println("starting user conn server on port %s", s.opts.ListenAddr)
-	go s.closeLoop()
 	return s.transport.ListenAndServe()
 }
 
-func (s *UserConnServer) closeLoop() {
-	for {
-		select {
-		case user := <-s.close:
-			delete(s.onlineUsers, user.Conn.RemoteAddr())
-
-			s.mx.Lock()
-			delete(s.onlineUsersIdMap, user.UserId)
-			defer s.mx.Unlock()
-
-			s.transport.Close(user.Conn)
-		}
-	}
+func (s *UserConnServer) clearClosedConn(conn internal.Conn) {
+	userId := conn.UserId()
+	delete(s.onlineUsers, conn.RemoteAddr())
+	s.mx.Lock()
+	delete(s.onlineUsersIdMap, userId)
+	s.mx.Unlock()
+	logrus.WithFields(logrus.Fields{
+		"user_id": userId,
+	}).Info("user disconnected")
 }
 
 func (s *UserConnServer) Close() error {
+	for _, user := range s.onlineUsers {
+		user.Conn.Close()
+	}
 	return nil
 }
 
