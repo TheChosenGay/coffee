@@ -49,6 +49,7 @@ func (s *defaultOnlineUserService) GetOnlineUsers() []*OnlineUser {
 }
 
 func (s *defaultOnlineUserService) OfflineUser(ctx context.Context, userId int) error {
+	s.mx.Lock()
 	defer s.mx.Unlock()
 	delete(s.onlineUsers, userId)
 	return nil

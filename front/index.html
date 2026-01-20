@@ -90,6 +90,16 @@
               <h2>房间列表</h2>
               <button id="refreshBtn">🔄 刷新</button>
             </div>
+            <div class="usage-hint">
+              <p>💡 <strong>使用说明：</strong></p>
+              <ol>
+                <li>首先在"聊天"标签页中创建WebSocket连接（输入用户ID并点击"连接"）</li>
+                <li>然后回到此页面，点击房间卡片上的"加入房间"按钮</li>
+                <li>输入您的用户ID（与WebSocket连接时使用的ID相同）</li>
+                <li>加入成功后，房间详情会显示在下方，展示当前在线用户</li>
+              </ol>
+            </div>
+            <div id="room-detail-container" style="display: none;"></div>
             <div id="rooms"></div>
           </div>
         </div>

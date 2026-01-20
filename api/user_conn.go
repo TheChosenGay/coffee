@@ -58,7 +58,7 @@ func (s *UserConnServer) Close() error {
 
 func (s *UserConnServer) onRecvConn(conn internal.Conn) {
 	if user, err := s.onlineUserSrv.GetOnlineUser(context.Background(), conn.UserId()); err != nil {
-		if user.Conn.RemoteAddr() == conn.RemoteAddr() {
+		if user != nil && user.Conn.RemoteAddr() == conn.RemoteAddr() {
 			logrus.Warnf("user %d is already online, closing old connection", conn.UserId())
 			conn.Close()
 			return

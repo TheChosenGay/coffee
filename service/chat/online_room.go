@@ -28,6 +28,7 @@ type OnlineRoom struct {
 func NewOnlineRoom(roomId int, roomStore store.RoomStore, userStore store.UserStore, onlineUserService OnlineUserService) (*OnlineRoom, error) {
 	r := &OnlineRoom{
 		RoomId:            roomId,
+		onlineUnits:       make(map[int]types.Unit),
 		broadcastCh:       make(chan *chat_service.ChatMessage),
 		roomStore:         roomStore,
 		userStore:         userStore,

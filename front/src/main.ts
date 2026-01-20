@@ -1,10 +1,14 @@
 import './style.css';
 import { RoomAPI, UserAPI } from './api';
-import type { User } from './api';
+import type { User, RoomUnit } from './api';
 import { ChatClient } from './chat';
 
 const roomAPI = new RoomAPI();
 const userAPI = new UserAPI();
+
+// 当前房间状态
+let currentRoomId: number | null = null;
+let currentUserId: number | null = null;
 
 // DOM 元素 - Rooms
 const roomsContainer = document.getElementById('rooms')!;
@@ -59,9 +63,22 @@ async function renderRooms() {
             </span>
           </div>
         </div>
-        <button class="delete-btn" data-room-id="${room.room_id}">删除</button>
+        <div class="room-actions">
+          <button class="join-btn" data-room-id="${room.room_id}">加入房间</button>
+          <button class="delete-btn" data-room-id="${room.room_id}">删除</button>
+        </div>
       </div>
     `).join('');
+    
+    // 添加加入房间按钮事件
+    document.querySelectorAll('.join-btn').forEach(btn => {
+      const roomId = (btn as HTMLElement).dataset.roomId;
+      if (roomId) {
+        btn.addEventListener('click', () => {
+          showJoinRoomDialog(parseInt(roomId));
+        });
+      }
+    });
     
     // 添加删除按钮事件
     document.querySelectorAll('.delete-btn').forEach(btn => {
@@ -116,6 +133,172 @@ async function createRoom() {
   }
 }
 
+// 显示加入房间对话框
+function showJoinRoomDialog(roomId: number) {
+  // 获取所有已连接的WebSocket用户ID
+  const connectedUserIds: number[] = [];
+  connections.forEach((conn) => {
+    if (conn.client.isConnected() && conn.userId > 0) {
+      connectedUserIds.push(conn.userId);
+    }
+  });
+  
+  let promptMessage = '请输入您的用户ID：\n\n';
+  if (connectedUserIds.length > 0) {
+    promptMessage += `💡 提示：您当前已连接的WebSocket用户ID：${connectedUserIds.join(', ')}\n`;
+    promptMessage += '（请使用已连接的用户ID加入房间）\n\n';
+  } else {
+    promptMessage += '⚠️ 警告：您还没有通过WebSocket连接！\n';
+    promptMessage += '请先到"聊天"标签页创建WebSocket连接，然后再加入房间。\n\n';
+  }
+  promptMessage += '请输入用户ID：';
+  
+  const userIdInput = prompt(promptMessage);
+  if (!userIdInput) {
+    return;
+  }
+  
+  const userId = parseInt(userIdInput);
+  if (!userId || userId < 1) {
+    alert('请输入有效的用户ID（必须是大于0的数字）');
+    return;
+  }
+  
+  // 检查用户是否已连接
+  if (connectedUserIds.length > 0 && !connectedUserIds.includes(userId)) {
+    const confirmJoin = confirm(
+      `⚠️ 用户ID ${userId} 当前未通过WebSocket连接。\n\n` +
+      `已连接的用户ID：${connectedUserIds.join(', ')}\n\n` +
+      `是否仍要继续加入房间？\n` +
+      `（注意：只有在线用户才能加入房间）`
+    );
+    if (!confirmJoin) {
+      return;
+    }
+  }
+  
+  joinRoom(roomId, userId);
+}
+
+// 加入房间
+async function joinRoom(roomId: number, userId: number) {
+  try {
+    await roomAPI.joinRoom(roomId, userId);
+    currentRoomId = roomId;
+    currentUserId = userId;
+    showNotification(`✅ 成功加入房间 #${roomId}！`, 'success');
+    // 显示房间详情
+    showRoomDetail(roomId);
+    // 刷新房间列表
+    await renderRooms();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '未知错误';
+    showNotification(`❌ 加入房间失败: ${message}`, 'error');
+  }
+}
+
+// 退出房间
+async function quitRoom(roomId: number, userId: number) {
+  try {
+    await roomAPI.quitRoom(roomId, userId);
+    currentRoomId = null;
+    currentUserId = null;
+    showNotification(`✅ 成功退出房间 #${roomId}！`, 'success');
+    // 隐藏房间详情
+    hideRoomDetail();
+    // 刷新房间列表
+    await renderRooms();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '未知错误';
+    showNotification(`❌ 退出房间失败: ${message}`, 'error');
+  }
+}
+
+// 显示房间详情
+async function showRoomDetail(roomId: number) {
+  // 获取房间详情容器（应该在HTML中已经存在）
+  let detailContainer = document.getElementById('room-detail-container');
+  if (!detailContainer) {
+    // 如果不存在，创建它并插入到房间列表之前
+    detailContainer = document.createElement('div');
+    detailContainer.id = 'room-detail-container';
+    detailContainer.className = 'room-detail-container';
+    // 插入到房间列表之前
+    if (roomsContainer.parentElement) {
+      roomsContainer.parentElement.insertBefore(detailContainer, roomsContainer);
+    }
+  }
+  
+  detailContainer.innerHTML = '<p class="loading">加载中...</p>';
+  detailContainer.style.display = 'block';
+  
+  try {
+    const units = await roomAPI.getRoomUnits(roomId);
+    
+    detailContainer.innerHTML = `
+      <div class="room-detail-header">
+        <h2>🏠 房间 #${roomId}</h2>
+        ${currentUserId ? `<button class="quit-room-btn" data-room-id="${roomId}" data-user-id="${currentUserId}">退出房间</button>` : ''}
+      </div>
+      <div class="room-detail-content">
+        <h3>👥 在线用户 (${units.length})</h3>
+        <div class="room-units-list">
+          ${units.length === 0 
+            ? '<p class="empty">当前没有在线用户</p>' 
+            : units.map(unit => `
+                <div class="room-unit-card">
+                  <div class="unit-info">
+                    <span class="unit-avatar">👤</span>
+                    <div class="unit-details">
+                      <span class="unit-name">${escapeHtml(unit.nickname || `用户 ${unit.id}`)}</span>
+                      <span class="unit-id">ID: ${unit.id}</span>
+                    </div>
+                  </div>
+                </div>
+              `).join('')
+          }
+        </div>
+      </div>
+    `;
+    
+    // 添加退出房间按钮事件
+    const quitBtn = detailContainer.querySelector('.quit-room-btn');
+    if (quitBtn) {
+      quitBtn.addEventListener('click', () => {
+        const roomIdAttr = (quitBtn as HTMLElement).dataset.roomId;
+        const userIdAttr = (quitBtn as HTMLElement).dataset.userId;
+        if (roomIdAttr && userIdAttr) {
+          quitRoom(parseInt(roomIdAttr), parseInt(userIdAttr));
+        }
+      });
+    }
+    
+    // 定期刷新在线用户列表
+    if (currentRoomId === roomId) {
+      setTimeout(() => {
+        if (currentRoomId === roomId) {
+          showRoomDetail(roomId);
+        }
+      }, 3000); // 每3秒刷新一次
+    }
+  } catch (error) {
+    detailContainer.innerHTML = `
+      <div class="error">
+        <h3>❌ 错误</h3>
+        <p>${error instanceof Error ? error.message : '未知错误'}</p>
+      </div>
+    `;
+  }
+}
+
+// 隐藏房间详情
+function hideRoomDetail() {
+  const detailContainer = document.getElementById('room-detail-container');
+  if (detailContainer) {
+    detailContainer.style.display = 'none';
+  }
+}
+
 // 删除房间
 async function deleteRoom(roomId: number) {
   if (!confirm(`确定要删除房间 #${roomId} 吗？`)) {
@@ -125,6 +308,12 @@ async function deleteRoom(roomId: number) {
   try {
     await roomAPI.deleteRoom(roomId);
     showNotification(`✅ 房间 #${roomId} 删除成功！`, 'success');
+    // 如果删除的是当前房间，隐藏详情
+    if (currentRoomId === roomId) {
+      hideRoomDetail();
+      currentRoomId = null;
+      currentUserId = null;
+    }
     await renderRooms();
   } catch (error) {
     const message = error instanceof Error ? error.message : '未知错误';

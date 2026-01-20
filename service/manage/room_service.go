@@ -8,6 +8,7 @@ import (
 	"github.com/TheChosenGay/coffee/service/chat"
 	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/types"
+	"github.com/sirupsen/logrus"
 )
 
 type roomService struct {
@@ -89,6 +90,7 @@ func (s *roomService) JoinRoom(ctx context.Context, roomId int, unitId int) erro
 	}
 	room, err := s.roomStore.GetRoom(ctx, roomId)
 	if err != nil {
+		logrus.WithError(err).Errorf("Room %d not found", roomId)
 		return fmt.Errorf("Failed To Join Room: %w", err)
 	}
 	if room.State == types.RoomStateBanned {
@@ -101,7 +103,16 @@ func (s *roomService) JoinRoom(ctx context.Context, roomId int, unitId int) erro
 
 	onlineRoom, err := s.onlineRoomService.GetOnlineRoom(ctx, roomId)
 	if err != nil {
-		return err
+		logrus.Warnf("Room %d does not online", roomId)
+		onlineRoom, err = chat.NewOnlineRoom(roomId, s.roomStore, s.userStore, s.onlineUserService)
+		if err != nil {
+			logrus.WithError(err).Errorf("Failed To Create Online Room: %d", roomId)
+			return fmt.Errorf("Failed To Create Online Room: %w", err)
+		}
+		if err := s.onlineRoomService.OnlineRoom(ctx, onlineRoom); err != nil {
+			logrus.WithError(err).Errorf("Failed To Online Room: %d", roomId)
+			return err
+		}
 	}
 	unit, err := s.onlineUserService.GetOnlineUser(ctx, unitId)
 	if err != nil {
@@ -116,6 +127,10 @@ func (s *roomService) JoinRoom(ctx context.Context, roomId int, unitId int) erro
 	if err != nil {
 		return fmt.Errorf("Failed To Join Room: %w", err)
 	}
+	logrus.WithFields(logrus.Fields{
+		"room_id": roomId,
+		"unit_id": unitId,
+	}).Info("joined room successfully")
 	return nil
 }
 

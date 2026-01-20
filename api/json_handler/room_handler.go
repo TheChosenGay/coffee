@@ -121,11 +121,17 @@ func (s *JsonRoomServiceHandler) quitRoom(w http.ResponseWriter, r *http.Request
 	api.WriteToJson(w, http.StatusOK, map[string]string{"message": fmt.Sprintf("user %d quit room %d successfully", userId, roomId)})
 }
 
+type UnitResponse struct {
+	Id       int    `json:"id"`
+	Nickname string `json:"nickname"`
+}
+
 func (s *JsonRoomServiceHandler) getRoomUnits(w http.ResponseWriter, r *http.Request) {
 	roomIdStr := r.URL.Query().Get("room_id")
 	roomId, err := strconv.Atoi(roomIdStr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	ctx := context.WithValue(r.Context(), "requestId", rand.Int64N(1000000))
 	units, err := s.svc.GetRoomUnits(ctx, roomId)
@@ -133,5 +139,15 @@ func (s *JsonRoomServiceHandler) getRoomUnits(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	api.WriteToJson(w, http.StatusOK, map[string]interface{}{"units": units})
+	
+	// Convert Unit interface to serializable struct
+	unitResponses := make([]UnitResponse, 0, len(units))
+	for _, unit := range units {
+		unitResponses = append(unitResponses, UnitResponse{
+			Id:       unit.Id(),
+			Nickname: unit.NickName(),
+		})
+	}
+	
+	api.WriteToJson(w, http.StatusOK, map[string]interface{}{"units": unitResponses})
 }
