@@ -24,6 +24,10 @@
             <span>🏠</span>
             <span>房间管理</span>
           </button>
+          <button class="tab-btn" data-tab="chat">
+            <span>💬</span>
+            <span>聊天</span>
+          </button>
         </div>
       </aside>
       
@@ -87,6 +91,25 @@
               <button id="refreshBtn">🔄 刷新</button>
             </div>
             <div id="rooms"></div>
+          </div>
+        </div>
+        
+        <!-- Chat Tab Content -->
+        <div class="tab-content" id="chat-tab">
+          <div class="section">
+            <div class="header">
+              <h2>💬 WebSocket 聊天</h2>
+              <button id="addConnectionBtn">➕ 添加连接</button>
+            </div>
+            <div id="connections" class="connections-container"></div>
+          </div>
+          
+          <div class="section">
+            <div class="header">
+              <h2>📨 消息记录</h2>
+              <button id="clearMessagesBtn">清空</button>
+            </div>
+            <div id="messages" class="messages-container"></div>
           </div>
         </div>
       </main>

@@ -1,6 +1,7 @@
 import './style.css';
 import { RoomAPI, UserAPI } from './api';
 import type { User } from './api';
+import { ChatClient } from './chat';
 
 const roomAPI = new RoomAPI();
 const userAPI = new UserAPI();
@@ -319,6 +320,309 @@ nicknameInput.addEventListener('keypress', (e) => {
     registerUser();
   }
 });
+
+// ========== Chat Functions ==========
+
+interface ConnectionInfo {
+  id: string;
+  client: ChatClient;
+  userId: number;
+  element: HTMLElement;
+  number: number; // 连接编号
+}
+
+const connections = new Map<string, ConnectionInfo>();
+let connectionIdCounter = 0;
+
+// DOM 元素 - Chat
+const connectionsContainer = document.getElementById('connections')!;
+const messagesContainer = document.getElementById('messages')!;
+const addConnectionBtn = document.getElementById('addConnectionBtn')!;
+const clearMessagesBtn = document.getElementById('clearMessagesBtn')!;
+
+// 创建新的连接卡片
+function createConnectionCard(userId?: number): ConnectionInfo {
+  const connectionId = `conn_${++connectionIdCounter}`;
+  const client = new ChatClient();
+  
+  const card = document.createElement('div');
+  card.className = 'connection-card';
+  card.id = connectionId;
+  
+  const userIdValue = userId || 0;
+  
+  card.innerHTML = `
+    <div class="connection-header">
+      <div class="connection-info">
+        <span class="connection-id">连接 #${connectionIdCounter}</span>
+        <div class="connection-status">
+          <span class="status-indicator disconnected"></span>
+          <span class="status-text">未连接</span>
+        </div>
+      </div>
+      <button class="remove-connection-btn" data-connection-id="${connectionId}">🗑️</button>
+    </div>
+    <div class="connection-body">
+      <div class="connection-form">
+        <input 
+          type="number" 
+          class="connection-user-id" 
+          placeholder="用户ID" 
+          min="1"
+          value="${userIdValue || ''}"
+          ${userIdValue ? 'disabled' : ''}
+        />
+        <button class="connect-btn" data-connection-id="${connectionId}">连接</button>
+        <button class="disconnect-btn" data-connection-id="${connectionId}" disabled>断开</button>
+      </div>
+      <div class="message-form">
+        <input 
+          type="number" 
+          class="target-user-id" 
+          placeholder="目标用户ID" 
+          min="1"
+          disabled
+        />
+        <input 
+          type="text" 
+          class="message-input" 
+          placeholder="输入消息..." 
+          disabled
+        />
+        <button class="send-btn" data-connection-id="${connectionId}" disabled>发送</button>
+      </div>
+    </div>
+  `;
+  
+  connectionsContainer.appendChild(card);
+  
+  const info: ConnectionInfo = {
+    id: connectionId,
+    client,
+    userId: userIdValue,
+    element: card,
+    number: connectionIdCounter
+  };
+  
+  // 设置事件监听
+  setupConnectionEvents(info);
+  
+  // 设置消息监听
+  client.onMessage((data) => {
+    const contents = data.contents || [];
+    contents.forEach((content) => {
+      const messages = content.content || [];
+      messages.forEach((msg) => {
+        addMessage('received', data.target_id, client.getUserId(), msg, connectionId);
+      });
+    });
+  });
+  
+  client.onStatusChange((connected) => {
+    updateConnectionStatus(info, connected);
+  });
+  
+  connections.set(connectionId, info);
+  
+  return info;
+}
+
+// 设置连接事件监听
+function setupConnectionEvents(info: ConnectionInfo) {
+  const card = info.element;
+  const userIdInput = card.querySelector('.connection-user-id') as HTMLInputElement;
+  const connectBtn = card.querySelector('.connect-btn')!;
+  const disconnectBtn = card.querySelector('.disconnect-btn')!;
+  const targetUserIdInput = card.querySelector('.target-user-id') as HTMLInputElement;
+  const messageInput = card.querySelector('.message-input') as HTMLInputElement;
+  const sendBtn = card.querySelector('.send-btn')!;
+  const removeBtn = card.querySelector('.remove-connection-btn')!;
+  
+  connectBtn.addEventListener('click', async () => {
+    const userId = parseInt(userIdInput.value);
+    
+    if (!userId || userId < 1) {
+      alert('请输入有效的用户ID');
+      return;
+    }
+    
+    // 检查是否已经存在该用户ID的连接
+    for (const [id, conn] of connections) {
+      if (id !== info.id && conn.userId === userId && conn.client.isConnected()) {
+        alert(`用户ID ${userId} 已经连接，请先断开该连接`);
+        return;
+      }
+    }
+    
+    connectBtn.textContent = '连接中...';
+    connectBtn.setAttribute('disabled', 'true');
+    
+    try {
+      await info.client.connect(userId);
+      info.userId = userId;
+      
+      // 手动更新状态，确保UI正确更新
+      updateConnectionStatus(info, true);
+      
+      showNotification(`✅ WebSocket连接成功！用户ID: ${userId}`, 'success');
+      
+      userIdInput.disabled = true;
+      targetUserIdInput.disabled = false;
+      messageInput.disabled = false;
+      sendBtn.disabled = false;
+      disconnectBtn.disabled = false;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
+      showNotification(`❌ 连接失败: ${message}`, 'error');
+      updateConnectionStatus(info, false);
+    } finally {
+      connectBtn.textContent = '连接';
+      connectBtn.removeAttribute('disabled');
+    }
+  });
+  
+  disconnectBtn.addEventListener('click', () => {
+    info.client.disconnect();
+    showNotification(`已断开连接 (用户ID: ${info.userId})`, 'success');
+    
+    userIdInput.disabled = false;
+    targetUserIdInput.disabled = false;
+    messageInput.disabled = false;
+    sendBtn.disabled = true;
+    disconnectBtn.disabled = true;
+    
+    updateConnectionStatus(info, false);
+  });
+  
+  sendBtn.addEventListener('click', async () => {
+    const targetUserId = parseInt(targetUserIdInput.value);
+    const message = messageInput.value.trim();
+    
+    if (!targetUserId || targetUserId < 1) {
+      alert('请输入有效的目标用户ID');
+      return;
+    }
+    
+    if (!message) {
+      alert('请输入消息内容');
+      return;
+    }
+    
+    try {
+      await info.client.sendMessage(targetUserId, message);
+      
+      // 显示发送的消息
+      addMessage('sent', info.client.getUserId(), targetUserId, message, info.id);
+      
+      // 清空输入框
+      messageInput.value = '';
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
+      showNotification(`❌ 发送失败: ${message}`, 'error');
+    }
+  });
+  
+  // 回车发送消息
+  messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !sendBtn.hasAttribute('disabled')) {
+      sendBtn.click();
+    }
+  });
+  
+  targetUserIdInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !sendBtn.hasAttribute('disabled')) {
+      messageInput.focus();
+    }
+  });
+  
+  removeBtn.addEventListener('click', () => {
+    removeConnection(info.id);
+  });
+}
+
+// 更新连接状态
+function updateConnectionStatus(info: ConnectionInfo, connected: boolean) {
+  const card = info.element;
+  const indicator = card.querySelector('.status-indicator')!;
+  const statusText = card.querySelector('.status-text')!;
+  
+  if (connected) {
+    indicator.className = 'status-indicator connected';
+    statusText.textContent = `已连接 (用户ID: ${info.userId})`;
+  } else {
+    indicator.className = 'status-indicator disconnected';
+    statusText.textContent = '未连接';
+  }
+}
+
+// 移除连接
+function removeConnection(connectionId: string) {
+  const info = connections.get(connectionId);
+  if (!info) return;
+  
+  if (info.client.isConnected()) {
+    if (!confirm(`确定要移除连接 #${info.number} 吗？连接将被断开。`)) {
+      return;
+    }
+    info.client.disconnect();
+  }
+  
+  info.element.remove();
+  connections.delete(connectionId);
+  showNotification('连接已移除', 'success');
+}
+
+// 添加消息到界面
+function addMessage(
+  type: 'sent' | 'received', 
+  fromUserId: number, 
+  targetUserId: number, 
+  content: string,
+  connectionId: string
+) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${type}`;
+  
+  const time = new Date().toLocaleTimeString();
+  const label = type === 'sent' ? '发送' : '接收';
+  const direction = type === 'sent' ? `→ 用户 ${targetUserId}` : `← 用户 ${fromUserId}`;
+  const connInfo = connections.get(connectionId);
+  const connLabel = connInfo ? `[连接 #${connInfo.number}]` : '';
+  
+  messageDiv.innerHTML = `
+    <div class="message-header">
+      <span class="message-label ${type}">${label}</span>
+      <span class="message-connection">${connLabel}</span>
+      <span class="message-direction">${direction}</span>
+      <span class="message-time">${time}</span>
+    </div>
+    <div class="message-content">${escapeHtml(content)}</div>
+  `;
+  
+  messagesContainer.appendChild(messageDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// 转义HTML
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// 清空消息
+function clearMessages() {
+  if (confirm('确定要清空所有消息吗？')) {
+    messagesContainer.innerHTML = '';
+  }
+}
+
+// Chat事件监听
+addConnectionBtn.addEventListener('click', () => {
+  createConnectionCard();
+});
+
+clearMessagesBtn.addEventListener('click', clearMessages);
 
 // 初始化
 renderRooms();
