@@ -336,9 +336,7 @@ let connectionIdCounter = 0;
 
 // DOM 元素 - Chat
 const connectionsContainer = document.getElementById('connections')!;
-const messagesContainer = document.getElementById('messages')!;
 const addConnectionBtn = document.getElementById('addConnectionBtn')!;
-const clearMessagesBtn = document.getElementById('clearMessagesBtn')!;
 
 // 创建新的连接卡片
 function createConnectionCard(userId?: number): ConnectionInfo {
@@ -391,6 +389,13 @@ function createConnectionCard(userId?: number): ConnectionInfo {
         />
         <button class="send-btn" data-connection-id="${connectionId}" disabled>发送</button>
       </div>
+      <div class="connection-messages">
+        <div class="messages-header">
+          <span>📨 收到的消息</span>
+          <button class="clear-connection-messages-btn" data-connection-id="${connectionId}">清空</button>
+        </div>
+        <div class="connection-messages-container" data-connection-id="${connectionId}"></div>
+      </div>
     </div>
   `;
   
@@ -408,14 +413,333 @@ function createConnectionCard(userId?: number): ConnectionInfo {
   setupConnectionEvents(info);
   
   // 设置消息监听
+  console.log('🔧🔧🔧 ========== 准备设置 onMessage 回调 ==========');
+  console.log('🔧🔧🔧 连接ID:', info.id);
+  console.log('🔧🔧🔧 用户ID:', info.userId);
+  console.log('🔧🔧🔧 client对象:', client);
+  
   client.onMessage((data) => {
+    console.log('\n\n');
+    console.log('📨📨📨 ========== onMessage 回调被执行！==========');
+    console.log('📨📨📨 这是最顶层的消息处理回调！');
+    console.log('📨📨📨 时间:', new Date().toLocaleString('zh-CN'));
+    
+    const currentUserId = client.getUserId();
+    
+    // ========== 打印所有关键信息 ==========
+    console.log('\n\n');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📨 ========== 收到 WebSocket 消息 ==========');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log(`⏰ 接收时间: ${new Date().toLocaleString('zh-CN')}`);
+    console.log('');
+    console.log('👤 ========== 用户ID信息 ==========');
+    console.log(`   当前连接的用户ID (currentUserId): ${currentUserId}`);
+    console.log(`   用户ID类型: ${typeof currentUserId}`);
+    console.log(`   用户ID值 (Number转换): ${Number(currentUserId) || 0}`);
+    console.log('');
+    console.log('🎯 ========== 接收者ID信息 ==========');
+    console.log(`   消息中的接收者ID (data.target_id): ${data.target_id}`);
+    console.log(`   接收者ID类型: ${typeof data.target_id}`);
+    console.log(`   接收者ID值 (Number转换): ${Number(data.target_id) || 0}`);
+    console.log('');
+    console.log('📋 ========== 消息基本信息 ==========');
+    console.log(`   消息类型: ${data.is_user ? '用户消息' : '系统消息'}`);
+    console.log(`   is_user值: ${data.is_user}`);
+    console.log(`   is_user类型: ${typeof data.is_user}`);
+    
+    console.log('');
+    console.log('📦 ========== 完整消息对象 ==========');
+    console.log('完整消息对象 (JSON):', JSON.stringify(data, null, 2));
+    console.log('消息对象的所有键:', Object.keys(data));
+    console.log('');
+    console.log('🔍 ========== 消息对象详细信息 ==========');
+    console.log({
+      'data.target_id': data.target_id,
+      'data.target_id类型': typeof data.target_id,
+      'data.target_id值': data.target_id,
+      'data.is_user': data.is_user,
+      'data.is_user类型': typeof data.is_user,
+      'data.contents': data.contents,
+      'data.contents类型': typeof data.contents,
+      'data.contents长度': data.contents?.length
+    });
+    
     const contents = data.contents || [];
-    contents.forEach((content) => {
+    let messageCount = 0;
+    
+    // 提取并打印所有消息内容
+    console.log('💬 ========== 消息内容详情 ==========');
+    contents.forEach((content, contentIdx) => {
       const messages = content.content || [];
-      messages.forEach((msg) => {
-        addMessage('received', data.target_id, client.getUserId(), msg, connectionId);
+      messageCount += messages.length;
+      
+      console.log(`  内容块 #${contentIdx + 1}:`, {
+        content对象: content,
+        content键: Object.keys(content),
+        messages数组: messages,
+        messages长度: messages.length
+      });
+      
+      messages.forEach((msg, msgIdx) => {
+        console.log(`    消息 #${contentIdx + 1}-${msgIdx + 1}: "${msg}"`);
+        console.log(`      内容类型: ${typeof msg}`);
+        console.log(`      内容长度: ${msg.length} 字符`);
       });
     });
+    
+    console.log('');
+    console.log('📊 ========== 消息统计 ==========');
+    console.log(`   内容块数量: ${contents.length}`);
+    console.log(`   消息总数: ${messageCount}`);
+    console.log('');
+    
+    // 接收到的消息：target_id是目标用户ID（即接收者的ID）
+    // 只有当target_id等于当前连接的用户ID时，才显示这条消息
+    // 确保类型一致（都转换为数字）
+    const targetIdNum = Number(data.target_id) || 0;
+    const currentUserIdNum = Number(currentUserId) || 0;
+    
+    console.log('');
+    console.log('🔍 ========== ID匹配检查 ==========');
+    console.log(`   接收者ID (targetIdNum): ${targetIdNum}`);
+    console.log(`   接收者ID类型: ${typeof targetIdNum}`);
+    console.log(`   当前用户ID (currentUserIdNum): ${currentUserIdNum}`);
+    console.log(`   当前用户ID类型: ${typeof currentUserIdNum}`);
+    console.log('');
+    console.log('   比较结果:');
+    console.log(`     targetIdNum === currentUserIdNum: ${targetIdNum === currentUserIdNum}`);
+    console.log(`     targetIdNum == currentUserIdNum: ${targetIdNum == currentUserIdNum}`);
+    console.log(`     targetIdNum !== currentUserIdNum: ${targetIdNum !== currentUserIdNum}`);
+    console.log(`     Number(targetIdNum) === Number(currentUserIdNum): ${Number(targetIdNum) === Number(currentUserIdNum)}`);
+    console.log(`     String(targetIdNum) === String(currentUserIdNum): ${String(targetIdNum) === String(currentUserIdNum)}`);
+    console.log('');
+    
+    if (targetIdNum !== currentUserIdNum) {
+      console.log('⚠️  ========== 消息被忽略 ==========');
+      console.log(`   原因: 接收者ID(${targetIdNum}) 与当前用户ID(${currentUserIdNum}) 不匹配`);
+      console.log(`   原始接收者ID: ${data.target_id} (类型: ${typeof data.target_id})`);
+      console.log(`   原始当前用户ID: ${currentUserId} (类型: ${typeof currentUserId})`);
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('\n');
+      return;
+    }
+    
+    console.log('✅ ========== 消息匹配成功 ==========');
+    console.log(`   接收者ID (${targetIdNum}) 与当前用户ID (${currentUserIdNum}) 匹配`);
+    console.log(`   开始查找并显示消息...`);
+    console.log('');
+    
+    // 根据当前用户ID查找对应的连接卡片
+    // 遍历所有连接，找到userId匹配的连接
+    let targetConnectionInfo: ConnectionInfo | null = null;
+    
+    console.log('🔍 ========== 查找匹配的连接卡片 ==========');
+    console.log(`   目标用户ID: ${currentUserIdNum}`);
+    console.log(`   当前所有连接数量: ${connections.size}`);
+    console.log('');
+    
+    console.log('   所有连接详情:');
+    for (const [connId, connInfo] of connections) {
+      const userIdMatch = connInfo.userId === currentUserIdNum;
+      console.log(`   连接 ${connId}:`, {
+        连接ID: connId,
+        用户ID: connInfo.userId,
+        用户ID类型: typeof connInfo.userId,
+        用户ID匹配: userIdMatch,
+        元素存在: !!connInfo.element,
+        元素在DOM: document.body.contains(connInfo.element)
+      });
+      
+      if (userIdMatch) {
+        targetConnectionInfo = connInfo;
+        console.log(`   ✅✅✅ 找到匹配的连接: ${connId} ✅✅✅`);
+      }
+    }
+    console.log('');
+    
+    if (!targetConnectionInfo) {
+      console.error('❌ ========== 错误：找不到匹配的连接 ==========');
+      console.error(`   找不到用户ID为 ${currentUserIdNum} 的连接卡片`);
+      console.error('   当前所有连接列表:');
+      Array.from(connections.entries()).forEach(([id, info]) => {
+        console.error(`     连接ID: ${id}, 用户ID: ${info.userId}, 用户ID类型: ${typeof info.userId}`);
+      });
+      console.error('═══════════════════════════════════════════════════════════');
+      console.log('\n');
+      return;
+    }
+    
+    console.log('✅ ========== 使用连接信息 ==========');
+    console.log({
+      连接ID: targetConnectionInfo.id,
+      用户ID: targetConnectionInfo.userId,
+      用户ID类型: typeof targetConnectionInfo.userId,
+      元素存在: !!targetConnectionInfo.element,
+      元素ID: targetConnectionInfo.element?.id,
+      元素在DOM: document.body.contains(targetConnectionInfo.element)
+    });
+    console.log('');
+    
+    // 这是发送给当前用户的消息，显示在接收者的卡片中
+    // 直接用ID查找card元素，确保是最新的
+    const cardId = targetConnectionInfo.id;
+    let card = document.getElementById(cardId) as HTMLElement;
+    
+    if (!card) {
+      console.error(`❌ 无法通过ID找到card: ${cardId}`);
+      console.error('尝试使用info.element:', targetConnectionInfo.element);
+      card = targetConnectionInfo.element;
+    }
+    
+    if (!card) {
+      console.error('❌ card元素不存在');
+      return;
+    }
+    
+    console.log('🔍 查找消息容器，card ID:', cardId, 'card存在:', !!card);
+    
+    // 通过data-connection-id属性查找容器
+    let container = card.querySelector(`[data-connection-id="${cardId}"].connection-messages-container`) as HTMLElement;
+    
+    if (!container) {
+      // 尝试直接查找类名
+      container = card.querySelector('.connection-messages-container') as HTMLElement;
+    }
+    
+    if (!container) {
+      console.log('⚠️  容器不存在，尝试创建');
+      const parent = card.querySelector('.connection-messages');
+      if (parent) {
+        container = document.createElement('div');
+        container.className = 'connection-messages-container';
+        container.setAttribute('data-connection-id', cardId);
+        container.style.cssText = 'max-height: 300px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0; display: block !important;';
+        parent.appendChild(container);
+        console.log('✅ 创建了新容器');
+      } else {
+        console.error('❌ 找不到.connection-messages父元素，card HTML:', card.innerHTML.substring(0, 500));
+        return;
+      }
+    }
+    
+    console.log('✅ 找到容器:', {
+      container存在: !!container,
+      container在DOM: document.body.contains(container),
+      container子元素数: container.children.length,
+      container样式: window.getComputedStyle(container).display
+    });
+    
+    // 强制显示容器 - 使用setProperty确保优先级
+    container.style.setProperty('display', 'block', 'important');
+    container.style.setProperty('visibility', 'visible', 'important');
+    container.style.setProperty('opacity', '1', 'important');
+    container.style.setProperty('min-height', '100px', 'important');
+    
+    // 确保容器的父元素也可见
+    const parent = container.parentElement;
+    if (parent) {
+      parent.style.setProperty('display', 'block', 'important');
+      parent.style.setProperty('visibility', 'visible', 'important');
+    }
+    
+    contents.forEach((content, contentIdx) => {
+      const messages = content.content || [];
+      messages.forEach((msg, msgIdx) => {
+        console.log(`✓ 添加消息 ${contentIdx + 1}-${msgIdx + 1}: "${msg}"`);
+        
+        // 创建消息元素 - 使用强制内联样式确保可见
+        const msgDiv = document.createElement('div');
+        const time = new Date().toLocaleTimeString();
+        
+        // 直接设置所有样式，确保消息可见
+        msgDiv.style.cssText = `
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          margin-bottom: 10px !important;
+          padding: 8px 12px !important;
+          background: white !important;
+          border-radius: 6px !important;
+          border-left: 3px solid #667eea !important;
+          min-height: 50px !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        `;
+        
+        msgDiv.className = 'message received';
+        msgDiv.innerHTML = `
+          <div style="font-size: 0.75rem; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="padding: 2px 8px; border-radius: 4px; background: #d1ecf1; color: #0c5460; font-weight: 600; font-size: 0.8rem;">接收</span>
+            <span style="color: #999;">← 收到消息</span>
+            <span style="margin-left: auto; color: #999; font-size: 0.75rem;">${time}</span>
+          </div>
+          <div style="font-size: 0.9rem; line-height: 1.4; color: #333; word-wrap: break-word; white-space: pre-wrap;">${escapeHtml(msg)}</div>
+        `;
+        
+        // 添加到容器
+        container.appendChild(msgDiv);
+        
+        // 立即强制设置样式（防止CSS覆盖）
+        msgDiv.style.setProperty('display', 'block', 'important');
+        msgDiv.style.setProperty('visibility', 'visible', 'important');
+        msgDiv.style.setProperty('opacity', '1', 'important');
+        
+        // 验证添加成功
+        const added = msgDiv.parentElement === container;
+        const visible = msgDiv.offsetHeight > 0;
+        console.log(`  ${added ? '✅' : '❌'} 消息${added ? '已' : '未'}添加到容器，${visible ? '可见' : '不可见'}，高度: ${msgDiv.offsetHeight}px`);
+        
+        // 如果不可见，强制修复
+        if (!visible || msgDiv.offsetHeight === 0) {
+          console.warn('⚠️  消息不可见，强制修复！');
+          msgDiv.style.minHeight = '50px';
+          msgDiv.style.height = 'auto';
+          void msgDiv.offsetHeight; // 强制重排
+          console.log('修复后高度:', msgDiv.offsetHeight);
+        }
+      });
+    });
+    
+    // 强制确保所有消息可见
+    Array.from(container.children).forEach((child, idx) => {
+      const el = child as HTMLElement;
+      el.style.setProperty('display', 'block', 'important');
+      el.style.setProperty('visibility', 'visible', 'important');
+      el.style.setProperty('opacity', '1', 'important');
+      console.log(`  消息${idx + 1}强制显示后高度: ${el.offsetHeight}px`);
+    });
+    
+    // 滚动到底部
+    setTimeout(() => {
+      container.scrollTop = container.scrollHeight;
+      console.log('滚动状态:', {
+        当前滚动: container.scrollTop,
+        总高度: container.scrollHeight,
+        容器高度: container.offsetHeight
+      });
+    }, 100);
+    
+    // 最终验证
+    const finalMessageCount = container.children.length;
+    const containerVisible = container.offsetHeight > 0;
+    const containerDisplay = window.getComputedStyle(container).display;
+    
+    console.log(`\n✨ 完成！容器中共有 ${finalMessageCount} 条消息`);
+    console.log('最终验证:', {
+      消息数量: finalMessageCount,
+      容器高度: container.offsetHeight,
+      容器可见: containerVisible,
+      容器显示: containerDisplay,
+      第一条消息高度: finalMessageCount > 0 ? (container.children[0] as HTMLElement).offsetHeight : 0
+    });
+    
+    // 如果消息数为0或容器不可见，显示警告
+    if (finalMessageCount === 0) {
+      alert('错误：消息没有添加到容器！');
+    } else if (!containerVisible) {
+      alert(`警告：容器中有${finalMessageCount}条消息，但容器不可见！`);
+    }
   });
   
   client.onStatusChange((connected) => {
@@ -437,6 +761,8 @@ function setupConnectionEvents(info: ConnectionInfo) {
   const messageInput = card.querySelector('.message-input') as HTMLInputElement;
   const sendBtn = card.querySelector('.send-btn')!;
   const removeBtn = card.querySelector('.remove-connection-btn')!;
+  const connectionMessagesContainer = card.querySelector('.connection-messages-container') as HTMLElement;
+  const clearConnectionMessagesBtn = card.querySelector('.clear-connection-messages-btn')!;
   
   connectBtn.addEventListener('click', async () => {
     const userId = parseInt(userIdInput.value);
@@ -511,8 +837,8 @@ function setupConnectionEvents(info: ConnectionInfo) {
     try {
       await info.client.sendMessage(targetUserId, message);
       
-      // 显示发送的消息
-      addMessage('sent', info.client.getUserId(), targetUserId, message, info.id);
+      // 不显示发送的消息在发送者的卡片中
+      // 消息会显示在接收者的卡片中（当接收者收到消息时）
       
       // 清空输入框
       messageInput.value = '';
@@ -537,6 +863,12 @@ function setupConnectionEvents(info: ConnectionInfo) {
   
   removeBtn.addEventListener('click', () => {
     removeConnection(info.id);
+  });
+  
+  clearConnectionMessagesBtn.addEventListener('click', () => {
+    if (confirm('确定要清空此连接的消息吗？')) {
+      connectionMessagesContainer.innerHTML = '';
+    }
   });
 }
 
@@ -572,35 +904,54 @@ function removeConnection(connectionId: string) {
   showNotification('连接已移除', 'success');
 }
 
-// 添加消息到界面
-function addMessage(
-  type: 'sent' | 'received', 
-  fromUserId: number, 
-  targetUserId: number, 
+// 添加消息到连接卡片（保留用于发送消息）
+function addConnectionMessage(
+  info: ConnectionInfo,
+  type: 'sent' | 'received',
+  fromUserId: number,
   content: string,
-  connectionId: string
+  targetUserId?: number
 ) {
-  const messageDiv = document.createElement('div');
-  messageDiv.className = `message ${type}`;
+  // 这个函数现在主要用于发送消息
+  // 接收消息直接在onMessage回调中处理
+  const card = info.element;
+  if (!card || !document.body.contains(card)) {
+    console.error('❌ card不存在或不在DOM中');
+    return;
+  }
   
+  let container = card.querySelector('.connection-messages-container') as HTMLElement;
+  if (!container) {
+    const parent = card.querySelector('.connection-messages');
+    if (parent) {
+      container = document.createElement('div');
+      container.className = 'connection-messages-container';
+      parent.appendChild(container);
+    } else {
+      console.error('❌ 找不到消息容器');
+      return;
+    }
+  }
+  
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `message ${type}`;
   const time = new Date().toLocaleTimeString();
   const label = type === 'sent' ? '发送' : '接收';
-  const direction = type === 'sent' ? `→ 用户 ${targetUserId}` : `← 用户 ${fromUserId}`;
-  const connInfo = connections.get(connectionId);
-  const connLabel = connInfo ? `[连接 #${connInfo.number}]` : '';
+  const direction = type === 'sent' 
+    ? `→ 用户 ${targetUserId || '?'}` 
+    : (fromUserId > 0 ? `← 用户 ${fromUserId}` : '← 收到消息');
   
-  messageDiv.innerHTML = `
+  msgDiv.innerHTML = `
     <div class="message-header">
       <span class="message-label ${type}">${label}</span>
-      <span class="message-connection">${connLabel}</span>
       <span class="message-direction">${direction}</span>
       <span class="message-time">${time}</span>
     </div>
     <div class="message-content">${escapeHtml(content)}</div>
   `;
   
-  messagesContainer.appendChild(messageDiv);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
 }
 
 // 转义HTML
@@ -610,19 +961,10 @@ function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
-// 清空消息
-function clearMessages() {
-  if (confirm('确定要清空所有消息吗？')) {
-    messagesContainer.innerHTML = '';
-  }
-}
-
 // Chat事件监听
 addConnectionBtn.addEventListener('click', () => {
   createConnectionCard();
 });
-
-clearMessagesBtn.addEventListener('click', clearMessages);
 
 // 初始化
 renderRooms();
