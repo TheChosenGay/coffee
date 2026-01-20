@@ -70,7 +70,6 @@ type ChatMessage struct {
 	TargetId      int32                  `protobuf:"varint,1,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
 	IsUser        bool                   `protobuf:"varint,2,opt,name=is_user,json=isUser,proto3" json:"is_user,omitempty"`
 	Contents      []*Content             `protobuf:"bytes,3,rep,name=contents,proto3" json:"contents,omitempty"`
-	SenderId      int32                  `protobuf:"varint,4,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -126,13 +125,6 @@ func (x *ChatMessage) GetContents() []*Content {
 	return nil
 }
 
-func (x *ChatMessage) GetSenderId() int32 {
-	if x != nil {
-		return x.SenderId
-	}
-	return 0
-}
-
 var File_chat_proto protoreflect.FileDescriptor
 
 const file_chat_proto_rawDesc = "" +
@@ -140,12 +132,11 @@ const file_chat_proto_rawDesc = "" +
 	"\n" +
 	"chat.proto\"#\n" +
 	"\aContent\x12\x18\n" +
-	"\acontent\x18\x01 \x03(\tR\acontent\"\x86\x01\n" +
+	"\acontent\x18\x01 \x03(\tR\acontent\"i\n" +
 	"\vChatMessage\x12\x1b\n" +
 	"\ttarget_id\x18\x01 \x01(\x05R\btargetId\x12\x17\n" +
 	"\ais_user\x18\x02 \x01(\bR\x06isUser\x12$\n" +
-	"\bcontents\x18\x03 \x03(\v2\b.ContentR\bcontents\x12\x1b\n" +
-	"\tsender_id\x18\x04 \x01(\x05R\bsenderIdB\x10Z\x0e./chat_serviceb\x06proto3"
+	"\bcontents\x18\x03 \x03(\v2\b.ContentR\bcontentsB\x10Z\x0e./chat_serviceb\x06proto3"
 
 var (
 	file_chat_proto_rawDescOnce sync.Once
