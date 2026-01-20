@@ -45,32 +45,7 @@ func NewUserConnServer(opts WsServerOpts) *UserConnServer {
 
 	chatService := chat.NewDefaultChatService(s)
 	s.chatService = chatService
-
-	s.transport.OnRecvConn(func(conn internal.Conn) {
-		user, err := s.userStore.GetUser(context.Background(), conn.UserId())
-		if err != nil || !user.IsValid() {
-			conn.Send([]byte("User not found"))
-			conn.Close()
-			return
-		}
-
-		onlineUser := chat.OnlineUser{
-			Conn:     conn,
-			UserId:   conn.UserId(),
-			UserName: user.Nickname,
-			ChatSrv:  s.chatService,
-		}
-		conn.OnRecvMsg(onlineUser.ReceiveMsg)
-
-		s.onlineUsers[conn.RemoteAddr()] = &onlineUser
-		s.onlineUsersIdMap[conn.UserId()] = &onlineUser
-
-		logrus.WithFields(logrus.Fields{
-			"user_name": user.Nickname,
-			"user_id":   conn.UserId(),
-		}).Info("user connected")
-	})
-
+	s.transport.OnRecvConn(s.onRecvConn)
 	s.transport.OnCloseConn(s.clearClosedConn)
 	return s
 }
@@ -78,17 +53,6 @@ func NewUserConnServer(opts WsServerOpts) *UserConnServer {
 func (s *UserConnServer) Run() error {
 	log.Println("starting user conn server on port %s", s.opts.ListenAddr)
 	return s.transport.ListenAndServe()
-}
-
-func (s *UserConnServer) clearClosedConn(conn internal.Conn) {
-	userId := conn.UserId()
-	delete(s.onlineUsers, conn.RemoteAddr())
-	s.mx.Lock()
-	delete(s.onlineUsersIdMap, userId)
-	s.mx.Unlock()
-	logrus.WithFields(logrus.Fields{
-		"user_id": userId,
-	}).Info("user disconnected")
 }
 
 func (s *UserConnServer) Close() error {
@@ -110,4 +74,45 @@ func (s *UserConnServer) getOnlineUser(userId int) (*chat.OnlineUser, error) {
 		return nil, errors.New("user not found")
 	}
 	return user, nil
+}
+
+func (s *UserConnServer) onRecvConn(conn internal.Conn) {
+	if user, ok := s.onlineUsersIdMap[conn.UserId()]; ok {
+		user.Conn.Send([]byte("another location connected."))
+		user.Conn.Close()
+	}
+
+	user, err := s.userStore.GetUser(context.Background(), conn.UserId())
+	if err != nil || !user.IsValid() {
+		conn.Send([]byte("User not found"))
+		conn.Close()
+		return
+	}
+
+	onlineUser := chat.OnlineUser{
+		Conn:     conn,
+		UserId:   conn.UserId(),
+		UserName: user.Nickname,
+		ChatSrv:  s.chatService,
+	}
+	conn.OnRecvMsg(onlineUser.ReceiveMsg)
+
+	s.onlineUsers[conn.RemoteAddr()] = &onlineUser
+	s.onlineUsersIdMap[conn.UserId()] = &onlineUser
+
+	logrus.WithFields(logrus.Fields{
+		"user_name": user.Nickname,
+		"user_id":   conn.UserId(),
+	}).Info("user connected")
+}
+
+func (s *UserConnServer) clearClosedConn(conn internal.Conn) {
+	userId := conn.UserId()
+	delete(s.onlineUsers, conn.RemoteAddr())
+	s.mx.Lock()
+	delete(s.onlineUsersIdMap, userId)
+	s.mx.Unlock()
+	logrus.WithFields(logrus.Fields{
+		"user_id": userId,
+	}).Info("user disconnected")
 }
