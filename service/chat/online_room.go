@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -43,6 +44,36 @@ func NewOnlineRoom(roomId int, roomStore store.RoomStore, userStore store.UserSt
 		"time":    time.Since(start).Milliseconds(),
 	}).Info("fetching units")
 	return r, nil
+}
+
+func (r *OnlineRoom) AddUnit(ctx context.Context, unit types.Unit) error {
+	r.mx.Lock()
+	defer r.mx.Unlock()
+	if _, ok := r.onlineUnits[unit.Id()]; ok {
+		return errors.New("unit already in the room")
+	}
+	r.onlineUnits[unit.Id()] = unit
+	return nil
+}
+
+func (r *OnlineRoom) RemoveUnit(ctx context.Context, unitId int) error {
+	r.mx.Lock()
+	defer r.mx.Unlock()
+	if _, ok := r.onlineUnits[unitId]; !ok {
+		return errors.New("unit not in the room")
+	}
+	delete(r.onlineUnits, unitId)
+	return nil
+}
+
+func (r *OnlineRoom) GetUnits(ctx context.Context) ([]types.Unit, error) {
+	r.mx.Lock()
+	defer r.mx.Unlock()
+	res := []types.Unit{}
+	for _, unit := range r.onlineUnits {
+		res = append(res, unit)
+	}
+	return res, nil
 }
 
 func (r *OnlineRoom) fetchUnits() error {

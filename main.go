@@ -8,6 +8,8 @@ import (
 	"github.com/TheChosenGay/coffee/api/grpc_handler"
 	"github.com/TheChosenGay/coffee/api/json_handler"
 	"github.com/TheChosenGay/coffee/service"
+	"github.com/TheChosenGay/coffee/service/chat"
+	"github.com/TheChosenGay/coffee/service/manage"
 	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/service/store/cache_store"
 	"github.com/TheChosenGay/coffee/service/store/gorm_store"
@@ -27,22 +29,24 @@ func main() {
 	userStore := gorm_store.NewGormUserStore(db)
 	roomStore := gorm_store.NewGormRoomStore(db)
 	cachedUserStore := cache_store.NewCacheUserStore(redisStore, userStore)
+	onlineUserService := chat.NewDefaultOnlineUserService(cachedUserStore)
+	onlineRoomService := chat.NewDefaultOnlineRoomService(roomStore)
 
 	userIdService := service.NewUserIdService()
 	userService := service.NewUserService(cachedUserStore, userIdService)
 	// use one coffee servive for both json and grpc
-	go runJsonServer(cs, roomStore, userService)
+	go runJsonServer(cs, roomStore, userStore, userService, onlineRoomService, onlineUserService)
 	go runGrpcServer(cs)
-	go runUserConnServer(cachedUserStore)
+	go runUserConnServer(cachedUserStore, onlineUserService)
 	select {}
 }
 
 // start json over http server
-func runJsonServer(cs service.CoffeeService, roomStore store.RoomStore, userService service.UserService) {
+func runJsonServer(cs service.CoffeeService, roomStore store.RoomStore, userStore store.UserStore, userService service.UserService, onlineRoomService chat.OnlineRoomService, onlineUserService chat.OnlineUserService) {
 	csvc := json_handler.NewJsonCoffeeServiceHandler(cs)
 	roomIdService := service.NewRoomIdService()
 
-	rs := service.NewRoomService(roomStore, roomIdService)
+	rs := manage.NewRoomService(roomStore, userStore, roomIdService, onlineRoomService, onlineUserService)
 	rsvc := json_handler.NewJsonRoomServiceHandler(rs)
 	usvc := json_handler.NewJsonUserServiceHandler(userService)
 	jsonServer := api.NewJsonServer(":8080")
@@ -66,10 +70,11 @@ func runGrpcServer(cs service.CoffeeService) {
 }
 
 // start websocket server
-func runUserConnServer(userStore store.UserStore) {
+func runUserConnServer(userStore store.UserStore, onlineUserService chat.OnlineUserService) {
 	userConnServer := api.NewUserConnServer(api.WsServerOpts{
-		ListenAddr: ":8081",
-		UserStore:  userStore,
+		ListenAddr:    ":8081",
+		UserStore:     userStore,
+		OnlineUserSrv: onlineUserService,
 	})
 	defer userConnServer.Close()
 

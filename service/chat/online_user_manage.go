@@ -13,6 +13,7 @@ type OnlineUserService interface {
 	GetOnlineUser(ctx context.Context, userId int) (*OnlineUser, error)
 	OfflineUser(ctx context.Context, userId int) error
 	OnlineUser(ctx context.Context, user *OnlineUser) error
+	GetOnlineUsers() []*OnlineUser
 }
 
 type defaultOnlineUserService struct {
@@ -35,6 +36,16 @@ func (s *defaultOnlineUserService) GetOnlineUser(ctx context.Context, userId int
 		return nil, errors.New("user not found")
 	}
 	return user, nil
+}
+
+func (s *defaultOnlineUserService) GetOnlineUsers() []*OnlineUser {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+	users := []*OnlineUser{}
+	for _, user := range s.onlineUsers {
+		users = append(users, user)
+	}
+	return users
 }
 
 func (s *defaultOnlineUserService) OfflineUser(ctx context.Context, userId int) error {

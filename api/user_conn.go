@@ -12,8 +12,9 @@ import (
 )
 
 type WsServerOpts struct {
-	ListenAddr string
-	UserStore  store.UserStore
+	ListenAddr    string
+	UserStore     store.UserStore
+	OnlineUserSrv chat.OnlineUserService
 }
 
 type UserConnServer struct {
@@ -24,8 +25,6 @@ type UserConnServer struct {
 	userStore     store.UserStore
 	chatService   chat.ChatService
 	onlineUserSrv chat.OnlineUserService
-
-	onlineUsers map[string]*chat.OnlineUser
 }
 
 func NewUserConnServer(opts WsServerOpts) *UserConnServer {
@@ -35,8 +34,7 @@ func NewUserConnServer(opts WsServerOpts) *UserConnServer {
 			ListenAddr: opts.ListenAddr,
 		}),
 		userStore:     opts.UserStore,
-		onlineUsers:   make(map[string]*chat.OnlineUser),
-		onlineUserSrv: chat.NewDefaultOnlineUserService(opts.UserStore),
+		onlineUserSrv: opts.OnlineUserSrv,
 	}
 
 	chatService := chat.NewDefaultChatService(s.onlineUserSrv)
@@ -52,7 +50,7 @@ func (s *UserConnServer) Run() error {
 }
 
 func (s *UserConnServer) Close() error {
-	for _, user := range s.onlineUsers {
+	for _, user := range s.onlineUserSrv.GetOnlineUsers() {
 		user.Conn.Close()
 	}
 	return nil

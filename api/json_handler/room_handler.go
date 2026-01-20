@@ -30,6 +30,14 @@ func (s *JsonRoomServiceHandler) MakeJsonServiceHandler() {
 	// list rooms
 	http.HandleFunc("/room/list", WithLogTime(s.listRooms))
 
+	// join room
+	http.HandleFunc("/room/join", WithLogTime(s.joinRoom))
+
+	// quit room
+	http.HandleFunc("/room/quit", WithLogTime(s.quitRoom))
+
+	// get room units
+	http.HandleFunc("/room/get_units", WithLogTime(s.getRoomUnits))
 }
 
 func (s *JsonRoomServiceHandler) createRoom(w http.ResponseWriter, r *http.Request) {
@@ -111,4 +119,19 @@ func (s *JsonRoomServiceHandler) quitRoom(w http.ResponseWriter, r *http.Request
 		return
 	}
 	api.WriteToJson(w, http.StatusOK, map[string]string{"message": fmt.Sprintf("user %d quit room %d successfully", userId, roomId)})
+}
+
+func (s *JsonRoomServiceHandler) getRoomUnits(w http.ResponseWriter, r *http.Request) {
+	roomIdStr := r.URL.Query().Get("room_id")
+	roomId, err := strconv.Atoi(roomIdStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	ctx := context.WithValue(r.Context(), "requestId", rand.Int64N(1000000))
+	units, err := s.svc.GetRoomUnits(ctx, roomId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	api.WriteToJson(w, http.StatusOK, map[string]interface{}{"units": units})
 }
