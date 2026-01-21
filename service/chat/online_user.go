@@ -23,6 +23,9 @@ func (u *OnlineUser) ReceiveMsg(msg []byte) error {
 		return err
 	}
 
+	chatMsg.SenderId = int32(u.UserId)
+	chatMsg.MessageType = chat_service.MessageType_NORMAL
+
 	logrus.WithFields(logrus.Fields{
 		"user_id":   u.UserId,
 		"user_name": u.UserName,
@@ -37,6 +40,7 @@ func (u *OnlineUser) ReceiveMsg(msg []byte) error {
 		err = u.ChatSrv.SendMsgToRoom(context.Background(), int(chatMsg.TargetId), chatMsg)
 	}
 	if err != nil {
+		logrus.Errorf("failed to send message to user %d, error: %v", u.UserId, err)
 		return err
 	}
 

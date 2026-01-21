@@ -54,6 +54,17 @@ func (r *OnlineRoom) AddUnit(ctx context.Context, unit types.Unit) error {
 		return errors.New("unit already in the room")
 	}
 	r.onlineUnits[unit.Id()] = unit
+
+	msg := chat_service.ChatMessage{
+		TargetId:    int32(r.RoomId),
+		IsUser:      false,
+		MessageType: chat_service.MessageType_NOTIFY,
+		NotifyMessage: &chat_service.NotifyMessage{
+			NotifyType: chat_service.NotifyType_JOIN,
+			OperatorId: int32(unit.Id()),
+		},
+	}
+	go r.BroadcastMsg(&msg)
 	return nil
 }
 
@@ -64,6 +75,18 @@ func (r *OnlineRoom) RemoveUnit(ctx context.Context, unitId int) error {
 		return errors.New("unit not in the room")
 	}
 	delete(r.onlineUnits, unitId)
+
+	msg := chat_service.ChatMessage{
+		SenderId:    int32(unitId),
+		TargetId:    int32(r.RoomId),
+		IsUser:      false,
+		MessageType: chat_service.MessageType_NOTIFY,
+		NotifyMessage: &chat_service.NotifyMessage{
+			NotifyType: chat_service.NotifyType_QUIT,
+			OperatorId: int32(unitId),
+		},
+	}
+	go r.BroadcastMsg(&msg)
 	return nil
 }
 

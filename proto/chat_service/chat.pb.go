@@ -21,6 +21,98 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type MessageType int32
+
+const (
+	MessageType_NORMAL MessageType = 0
+	MessageType_NOTIFY MessageType = 1
+)
+
+// Enum value maps for MessageType.
+var (
+	MessageType_name = map[int32]string{
+		0: "NORMAL",
+		1: "NOTIFY",
+	}
+	MessageType_value = map[string]int32{
+		"NORMAL": 0,
+		"NOTIFY": 1,
+	}
+)
+
+func (x MessageType) Enum() *MessageType {
+	p := new(MessageType)
+	*p = x
+	return p
+}
+
+func (x MessageType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MessageType) Descriptor() protoreflect.EnumDescriptor {
+	return file_chat_proto_enumTypes[0].Descriptor()
+}
+
+func (MessageType) Type() protoreflect.EnumType {
+	return &file_chat_proto_enumTypes[0]
+}
+
+func (x MessageType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MessageType.Descriptor instead.
+func (MessageType) EnumDescriptor() ([]byte, []int) {
+	return file_chat_proto_rawDescGZIP(), []int{0}
+}
+
+type NotifyType int32
+
+const (
+	NotifyType_QUIT NotifyType = 0
+	NotifyType_JOIN NotifyType = 1
+)
+
+// Enum value maps for NotifyType.
+var (
+	NotifyType_name = map[int32]string{
+		0: "QUIT",
+		1: "JOIN",
+	}
+	NotifyType_value = map[string]int32{
+		"QUIT": 0,
+		"JOIN": 1,
+	}
+)
+
+func (x NotifyType) Enum() *NotifyType {
+	p := new(NotifyType)
+	*p = x
+	return p
+}
+
+func (x NotifyType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (NotifyType) Descriptor() protoreflect.EnumDescriptor {
+	return file_chat_proto_enumTypes[1].Descriptor()
+}
+
+func (NotifyType) Type() protoreflect.EnumType {
+	return &file_chat_proto_enumTypes[1]
+}
+
+func (x NotifyType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use NotifyType.Descriptor instead.
+func (NotifyType) EnumDescriptor() ([]byte, []int) {
+	return file_chat_proto_rawDescGZIP(), []int{1}
+}
+
 type Content struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Content       []string               `protobuf:"bytes,1,rep,name=content,proto3" json:"content,omitempty"`
@@ -65,18 +157,73 @@ func (x *Content) GetContent() []string {
 	return nil
 }
 
+type NotifyMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NotifyType    NotifyType             `protobuf:"varint,1,opt,name=notify_type,json=notifyType,proto3,enum=NotifyType" json:"notify_type,omitempty"`
+	OperatorId    int32                  `protobuf:"varint,2,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NotifyMessage) Reset() {
+	*x = NotifyMessage{}
+	mi := &file_chat_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotifyMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotifyMessage) ProtoMessage() {}
+
+func (x *NotifyMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NotifyMessage.ProtoReflect.Descriptor instead.
+func (*NotifyMessage) Descriptor() ([]byte, []int) {
+	return file_chat_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *NotifyMessage) GetNotifyType() NotifyType {
+	if x != nil {
+		return x.NotifyType
+	}
+	return NotifyType_QUIT
+}
+
+func (x *NotifyMessage) GetOperatorId() int32 {
+	if x != nil {
+		return x.OperatorId
+	}
+	return 0
+}
+
 type ChatMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TargetId      int32                  `protobuf:"varint,1,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
-	IsUser        bool                   `protobuf:"varint,2,opt,name=is_user,json=isUser,proto3" json:"is_user,omitempty"`
-	Contents      []*Content             `protobuf:"bytes,3,rep,name=contents,proto3" json:"contents,omitempty"`
+	SenderId      int32                  `protobuf:"varint,1,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
+	TargetId      int32                  `protobuf:"varint,2,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	IsUser        bool                   `protobuf:"varint,3,opt,name=is_user,json=isUser,proto3" json:"is_user,omitempty"`
+	Contents      []*Content             `protobuf:"bytes,4,rep,name=contents,proto3" json:"contents,omitempty"`
+	MessageType   MessageType            `protobuf:"varint,5,opt,name=message_type,json=messageType,proto3,enum=MessageType" json:"message_type,omitempty"`
+	NotifyMessage *NotifyMessage         `protobuf:"bytes,6,opt,name=notify_message,json=notifyMessage,proto3" json:"notify_message,omitempty"` // only used when message_type is NOTIFY
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChatMessage) Reset() {
 	*x = ChatMessage{}
-	mi := &file_chat_proto_msgTypes[1]
+	mi := &file_chat_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -88,7 +235,7 @@ func (x *ChatMessage) String() string {
 func (*ChatMessage) ProtoMessage() {}
 
 func (x *ChatMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_proto_msgTypes[1]
+	mi := &file_chat_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -101,7 +248,14 @@ func (x *ChatMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMessage.ProtoReflect.Descriptor instead.
 func (*ChatMessage) Descriptor() ([]byte, []int) {
-	return file_chat_proto_rawDescGZIP(), []int{1}
+	return file_chat_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ChatMessage) GetSenderId() int32 {
+	if x != nil {
+		return x.SenderId
+	}
+	return 0
 }
 
 func (x *ChatMessage) GetTargetId() int32 {
@@ -125,6 +279,20 @@ func (x *ChatMessage) GetContents() []*Content {
 	return nil
 }
 
+func (x *ChatMessage) GetMessageType() MessageType {
+	if x != nil {
+		return x.MessageType
+	}
+	return MessageType_NORMAL
+}
+
+func (x *ChatMessage) GetNotifyMessage() *NotifyMessage {
+	if x != nil {
+		return x.NotifyMessage
+	}
+	return nil
+}
+
 var File_chat_proto protoreflect.FileDescriptor
 
 const file_chat_proto_rawDesc = "" +
@@ -132,11 +300,28 @@ const file_chat_proto_rawDesc = "" +
 	"\n" +
 	"chat.proto\"#\n" +
 	"\aContent\x12\x18\n" +
-	"\acontent\x18\x01 \x03(\tR\acontent\"i\n" +
+	"\acontent\x18\x01 \x03(\tR\acontent\"^\n" +
+	"\rNotifyMessage\x12,\n" +
+	"\vnotify_type\x18\x01 \x01(\x0e2\v.NotifyTypeR\n" +
+	"notifyType\x12\x1f\n" +
+	"\voperator_id\x18\x02 \x01(\x05R\n" +
+	"operatorId\"\xee\x01\n" +
 	"\vChatMessage\x12\x1b\n" +
-	"\ttarget_id\x18\x01 \x01(\x05R\btargetId\x12\x17\n" +
-	"\ais_user\x18\x02 \x01(\bR\x06isUser\x12$\n" +
-	"\bcontents\x18\x03 \x03(\v2\b.ContentR\bcontentsB\x10Z\x0e./chat_serviceb\x06proto3"
+	"\tsender_id\x18\x01 \x01(\x05R\bsenderId\x12\x1b\n" +
+	"\ttarget_id\x18\x02 \x01(\x05R\btargetId\x12\x17\n" +
+	"\ais_user\x18\x03 \x01(\bR\x06isUser\x12$\n" +
+	"\bcontents\x18\x04 \x03(\v2\b.ContentR\bcontents\x12/\n" +
+	"\fmessage_type\x18\x05 \x01(\x0e2\f.MessageTypeR\vmessageType\x125\n" +
+	"\x0enotify_message\x18\x06 \x01(\v2\x0e.NotifyMessageR\rnotifyMessage*%\n" +
+	"\vMessageType\x12\n" +
+	"\n" +
+	"\x06NORMAL\x10\x00\x12\n" +
+	"\n" +
+	"\x06NOTIFY\x10\x01* \n" +
+	"\n" +
+	"NotifyType\x12\b\n" +
+	"\x04QUIT\x10\x00\x12\b\n" +
+	"\x04JOIN\x10\x01B\x10Z\x0e./chat_serviceb\x06proto3"
 
 var (
 	file_chat_proto_rawDescOnce sync.Once
@@ -150,18 +335,25 @@ func file_chat_proto_rawDescGZIP() []byte {
 	return file_chat_proto_rawDescData
 }
 
-var file_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_chat_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_chat_proto_goTypes = []any{
-	(*Content)(nil),     // 0: Content
-	(*ChatMessage)(nil), // 1: ChatMessage
+	(MessageType)(0),      // 0: MessageType
+	(NotifyType)(0),       // 1: NotifyType
+	(*Content)(nil),       // 2: Content
+	(*NotifyMessage)(nil), // 3: NotifyMessage
+	(*ChatMessage)(nil),   // 4: ChatMessage
 }
 var file_chat_proto_depIdxs = []int32{
-	0, // 0: ChatMessage.contents:type_name -> Content
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1, // 0: NotifyMessage.notify_type:type_name -> NotifyType
+	2, // 1: ChatMessage.contents:type_name -> Content
+	0, // 2: ChatMessage.message_type:type_name -> MessageType
+	3, // 3: ChatMessage.notify_message:type_name -> NotifyMessage
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_chat_proto_init() }
@@ -174,13 +366,14 @@ func file_chat_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chat_proto_rawDesc), len(file_chat_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_chat_proto_goTypes,
 		DependencyIndexes: file_chat_proto_depIdxs,
+		EnumInfos:         file_chat_proto_enumTypes,
 		MessageInfos:      file_chat_proto_msgTypes,
 	}.Build()
 	File_chat_proto = out.File
