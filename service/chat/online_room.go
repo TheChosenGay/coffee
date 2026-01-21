@@ -110,7 +110,7 @@ func (r *OnlineRoom) fetchUnits() error {
 	return nil
 }
 
-func (r *OnlineRoom) broadcastMsg(msg *chat_service.ChatMessage) error {
+func (r *OnlineRoom) BroadcastMsg(msg *chat_service.ChatMessage) error {
 	r.broadcastCh <- msg
 	return nil
 }

@@ -14,10 +14,11 @@ type ChatService interface {
 
 type defaultChatService struct {
 	onlineUserService OnlineUserService
+	onlineRoomService OnlineRoomService
 }
 
-func NewDefaultChatService(onlineUserService OnlineUserService) ChatService {
-	return &defaultChatService{onlineUserService: onlineUserService}
+func NewDefaultChatService(onlineUserService OnlineUserService, onlineRoomService OnlineRoomService) ChatService {
+	return &defaultChatService{onlineUserService: onlineUserService, onlineRoomService: onlineRoomService}
 }
 
 func (s *defaultChatService) SendMsgToUser(ctx context.Context, userId int, msg *chat_service.ChatMessage) error {
@@ -29,6 +30,10 @@ func (s *defaultChatService) SendMsgToUser(ctx context.Context, userId int, msg 
 }
 
 func (s *defaultChatService) SendMsgToRoom(ctx context.Context, roomId int, msg *chat_service.ChatMessage) error {
-
+	onlineRoom, err := s.onlineRoomService.GetOnlineRoom(ctx, roomId)
+	if err != nil {
+		return err
+	}
+	onlineRoom.BroadcastMsg(msg)
 	return nil
 }

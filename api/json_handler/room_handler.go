@@ -139,7 +139,7 @@ func (s *JsonRoomServiceHandler) getRoomUnits(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Convert Unit interface to serializable struct
 	unitResponses := make([]UnitResponse, 0, len(units))
 	for _, unit := range units {
@@ -148,6 +148,6 @@ func (s *JsonRoomServiceHandler) getRoomUnits(w http.ResponseWriter, r *http.Req
 			Nickname: unit.NickName(),
 		})
 	}
-	
+
 	api.WriteToJson(w, http.StatusOK, map[string]interface{}{"units": unitResponses})
 }

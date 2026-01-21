@@ -37,7 +37,7 @@ func main() {
 	// use one coffee servive for both json and grpc
 	go runJsonServer(cs, roomStore, userStore, userService, onlineRoomService, onlineUserService)
 	go runGrpcServer(cs)
-	go runUserConnServer(cachedUserStore, onlineUserService)
+	go runUserConnServer(cachedUserStore, onlineUserService, onlineRoomService)
 	select {}
 }
 
@@ -70,11 +70,12 @@ func runGrpcServer(cs service.CoffeeService) {
 }
 
 // start websocket server
-func runUserConnServer(userStore store.UserStore, onlineUserService chat.OnlineUserService) {
+func runUserConnServer(userStore store.UserStore, onlineUserService chat.OnlineUserService, onlineRoomService chat.OnlineRoomService) {
 	userConnServer := api.NewUserConnServer(api.WsServerOpts{
 		ListenAddr:    ":8081",
 		UserStore:     userStore,
 		OnlineUserSrv: onlineUserService,
+		ChatService:   chat.NewDefaultChatService(onlineUserService, onlineRoomService),
 	})
 	defer userConnServer.Close()
 

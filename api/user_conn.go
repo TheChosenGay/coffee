@@ -15,6 +15,7 @@ type WsServerOpts struct {
 	ListenAddr    string
 	UserStore     store.UserStore
 	OnlineUserSrv chat.OnlineUserService
+	ChatService   chat.ChatService
 }
 
 type UserConnServer struct {
@@ -35,10 +36,9 @@ func NewUserConnServer(opts WsServerOpts) *UserConnServer {
 		}),
 		userStore:     opts.UserStore,
 		onlineUserSrv: opts.OnlineUserSrv,
+		chatService:   opts.ChatService,
 	}
 
-	chatService := chat.NewDefaultChatService(s.onlineUserSrv)
-	s.chatService = chatService
 	s.transport.OnRecvConn(s.onRecvConn)
 	s.transport.OnCloseConn(s.clearClosedConn)
 	return s
