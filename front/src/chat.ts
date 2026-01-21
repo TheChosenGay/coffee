@@ -8,10 +8,28 @@ message Content {
   repeated string content = 1;
 }
 
+enum MessageType {
+  NORMAL = 0;
+  NOTIFY = 1;
+}
+
+enum NotifyType {
+  QUIT = 0;
+  JOIN = 1;
+}
+
+message NotifyMessage {
+  NotifyType notify_type = 1;
+  int32 operator_id = 2;
+}
+
 message ChatMessage {
-  int32 target_id = 1;
-  bool is_user = 2;
-  repeated Content contents = 3;
+  int32 sender_id = 1;
+  int32 target_id = 2;
+  bool is_user = 3;
+  repeated Content contents = 4;
+  MessageType message_type = 5;
+  NotifyMessage notify_message = 6;
 }
 `;
 
@@ -30,9 +48,15 @@ async function initProtobuf() {
 }
 
 export interface ChatMessageData {
+  sender_id: number;
   target_id: number;
   is_user: boolean;
   contents: Array<{ content: string[] }>;
+  message_type?: number; // MessageType: 0 = NORMAL, 1 = NOTIFY
+  notify_message?: {
+    notify_type?: number; // NotifyType: 0 = QUIT, 1 = JOIN
+    operator_id?: number;
+  };
 }
 
 export class ChatClient {
@@ -231,6 +255,15 @@ export class ChatClient {
       
       // protobufjs会将snake_case字段名转换为camelCase
       // 优先使用camelCase，如果没有则使用snake_case
+      let senderId: number = 0;
+      if (message.senderId !== undefined && message.senderId !== null) {
+        senderId = Number(message.senderId);
+        console.log('✅ 使用 message.senderId (camelCase):', senderId);
+      } else if (message.sender_id !== undefined && message.sender_id !== null) {
+        senderId = Number(message.sender_id);
+        console.log('✅ 使用 message.sender_id (snake_case):', senderId);
+      }
+      
       let targetId: number = 0;
       if (message.targetId !== undefined && message.targetId !== null) {
         targetId = Number(message.targetId);
@@ -253,12 +286,55 @@ export class ChatClient {
         console.warn('⚠️  警告：isUser 和 is_user 都不存在！');
       }
       
+      let messageType: number | undefined = undefined;
+      if (message.messageType !== undefined && message.messageType !== null) {
+        messageType = Number(message.messageType);
+        console.log('✅ 使用 message.messageType (camelCase):', messageType);
+      } else if (message.message_type !== undefined && message.message_type !== null) {
+        messageType = Number(message.message_type);
+        console.log('✅ 使用 message.message_type (snake_case):', messageType);
+      }
+      
+      let notifyMessage: { notify_type?: number; operator_id?: number } | undefined = undefined;
+      if (message.notifyMessage) {
+        const nm = message.notifyMessage;
+        notifyMessage = {};
+        if (nm.notifyType !== undefined && nm.notifyType !== null) {
+          notifyMessage.notify_type = Number(nm.notifyType);
+        } else if (nm.notify_type !== undefined && nm.notify_type !== null) {
+          notifyMessage.notify_type = Number(nm.notify_type);
+        }
+        if (nm.operatorId !== undefined && nm.operatorId !== null) {
+          notifyMessage.operator_id = Number(nm.operatorId);
+        } else if (nm.operator_id !== undefined && nm.operator_id !== null) {
+          notifyMessage.operator_id = Number(nm.operator_id);
+        }
+        console.log('✅ 解析 notifyMessage:', notifyMessage);
+      } else if (message.notify_message) {
+        const nm = message.notify_message;
+        notifyMessage = {};
+        if (nm.notifyType !== undefined && nm.notifyType !== null) {
+          notifyMessage.notify_type = Number(nm.notifyType);
+        } else if (nm.notify_type !== undefined && nm.notify_type !== null) {
+          notifyMessage.notify_type = Number(nm.notify_type);
+        }
+        if (nm.operatorId !== undefined && nm.operatorId !== null) {
+          notifyMessage.operator_id = Number(nm.operatorId);
+        } else if (nm.operator_id !== undefined && nm.operator_id !== null) {
+          notifyMessage.operator_id = Number(nm.operator_id);
+        }
+        console.log('✅ 解析 notify_message:', notifyMessage);
+      }
+      
       const data: ChatMessageData = {
+        sender_id: senderId,
         target_id: targetId,
         is_user: isUser,
         contents: (message.contents || []).map((c: any) => ({
           content: c.content || []
-        }))
+        })),
+        message_type: messageType,
+        notify_message: notifyMessage
       };
       
       console.log('✅ Protobuf 消息解析成功');
@@ -303,9 +379,11 @@ export class ChatClient {
     // protobufjs在创建消息时，期望使用camelCase字段名，即使proto文件使用snake_case
     // 如果使用snake_case，字段可能会被静默丢弃
     const chatMessage = ChatMessage.create({
-      targetId: targetUserId,  // camelCase
-      isUser: true,            // camelCase
-      contents: [content]
+      senderId: this.userId,   // camelCase
+      targetId: targetUserId,   // camelCase
+      isUser: true,             // camelCase
+      contents: [content],
+      messageType: 0            // NORMAL
     });
 
     // 验证消息
@@ -377,9 +455,11 @@ export class ChatClient {
 
     const content = Content.create({ content: [message] });
     const chatMessage = ChatMessage.create({
-      targetId: roomId,
-      isUser: false,  // 房间消息
-      contents: [content]
+      senderId: this.userId,   // camelCase
+      targetId: roomId,         // camelCase
+      isUser: false,            // 房间消息
+      contents: [content],
+      messageType: 0            // NORMAL
     });
 
     // 验证消息
@@ -391,12 +471,23 @@ export class ChatClient {
 
     const buffer = ChatMessage.encode(chatMessage).finish();
     
-    console.log('发送房间消息:', {
+    // 验证编码后的消息
+    const decoded = ChatMessage.decode(buffer) as any;
+    const decodedRoomId = decoded.targetId !== undefined ? decoded.targetId : decoded.target_id;
+    
+    console.log('📤 发送房间消息:', {
       userId: this.userId,
       roomId,
       message,
-      bufferLength: buffer.length
+      bufferLength: buffer.length,
+      decodedRoomId: decodedRoomId,
+      '编码后targetId匹配': decodedRoomId === roomId
     });
+    
+    if (decodedRoomId !== roomId) {
+      console.error(`❌ 房间ID编码错误: 期望 ${roomId}, 实际 ${decodedRoomId}`);
+      throw new Error(`房间ID编码错误: 期望 ${roomId}, 实际 ${decodedRoomId}`);
+    }
     
     try {
       this.ws.send(buffer);
