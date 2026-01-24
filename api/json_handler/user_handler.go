@@ -2,6 +2,7 @@ package json_handler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/TheChosenGay/coffee/api"
+	"github.com/TheChosenGay/coffee/middleware/auth"
 	"github.com/TheChosenGay/coffee/service"
 	"github.com/TheChosenGay/coffee/types"
 )
@@ -24,6 +26,9 @@ func NewJsonUserServiceHandler(svc service.UserService) api.JsonServerHandler {
 func (s *JsonUserServiceHandler) MakeJsonServiceHandler() {
 	http.HandleFunc("/user/register", WithLogTime(s.registerUser))
 
+	// login
+	http.HandleFunc("/user/login", WithLogTime(s.log))
+
 	// delete user
 	http.HandleFunc("/user/delete", WithLogTime(s.deleteUser))
 
@@ -37,25 +42,33 @@ func (s *JsonUserServiceHandler) MakeJsonServiceHandler() {
 func (s *JsonUserServiceHandler) registerUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	ctx = context.WithValue(ctx, "requestId", rand.Int64N(1000000))
-	nickName := r.URL.Query().Get("nickname")
-	sex := r.URL.Query().Get("sex")
+	registerInfo := types.RegisterInfo{}
+	if err := json.NewDecoder(r.Body).Decode(&registerInfo); err != nil {
+		api.WriteToJson(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	nickname := registerInfo.Nickname
+	sex := registerInfo.Sex
+	password := registerInfo.Password
 
-	if nickName == "" {
+	if nickname == "" {
 		api.WriteToJson(w, http.StatusBadRequest, map[string]string{"error": "nickname is required"})
 		return
 	}
 
-	sexInt, err := strconv.Atoi(sex)
-	if err != nil {
-		api.WriteToJson(w, http.StatusBadRequest, map[string]string{"error": "invalid sex"})
-		return
-	}
-	userId, err := s.svc.RegisterUser(ctx, types.User{Nickname: nickName, Sex: types.Sex(sexInt)})
+	userId, err := s.svc.RegisterUser(ctx, types.User{Nickname: nickname, Sex: types.Sex(sex), Password: password})
 	if err != nil {
 		api.WriteToJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	api.WriteToJson(w, http.StatusOK, map[string]string{"message": fmt.Sprintf("user(userId:%d) registered successfully", userId)})
+
+	loginResponse, err := s.makeLoginResponse(userId)
+	if err != nil {
+		api.WriteToJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	api.WriteToJson(w, http.StatusOK, loginResponse)
 }
 
 func (s *JsonUserServiceHandler) deleteUser(w http.ResponseWriter, r *http.Request) {
@@ -105,4 +118,36 @@ func (s *JsonUserServiceHandler) getUserById(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	api.WriteToJson(w, http.StatusOK, user)
+}
+
+func (s *JsonUserServiceHandler) login(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logInfo := types.LoginInfo{}
+	if err := json.NewDecoder(r.Body).Decode(&logInfo); err != nil {
+		api.WriteToJson(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	user, err := s.svc.Login(ctx, logInfo)
+	if err != nil {
+		api.WriteToJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	loginResponse, err := s.makeLoginResponse(user.UserId)
+	if err != nil {
+		api.WriteToJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	api.WriteToJson(w, http.StatusOK, loginResponse)
+}
+
+func (s *JsonUserServiceHandler) makeLoginResponse(userId int) (*types.LoginResponse, error) {
+
+	token, err := auth.CreateToken(userId)
+	if err != nil {
+		return nil, err
+	}
+	loginResponse := types.NewLoginResponse(userId, token)
+	return &loginResponse, nil
 }

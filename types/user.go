@@ -16,6 +16,17 @@ type User struct {
 	Sex      Sex
 	Age      int
 	Birthday int64
+	Password string
+}
+
+type LoginInfo struct {
+	UserId   int
+	Password string
+}
+
+type LoginResponse struct {
+	UserId int
+	Token  string
 }
 
 func (u User) IsValid() bool {
