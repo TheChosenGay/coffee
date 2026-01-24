@@ -1,5 +1,5 @@
 import './style.css';
-import { RoomAPI, UserAPI } from './api';
+import { RoomAPI, UserAPI, getToken, setToken } from './api';
 import type { User, RoomUnit } from './api';
 import { ChatClient } from './chat';
 
@@ -31,7 +31,13 @@ const registerBtn = document.getElementById('registerBtn')!;
 const refreshUsersBtn = document.getElementById('refreshUsersBtn')!;
 const nicknameInput = document.getElementById('nickname') as HTMLInputElement;
 const sexSelect = document.getElementById('sex') as HTMLSelectElement;
+const registerPasswordInput = document.getElementById('registerPassword') as HTMLInputElement;
 const userSearchInput = document.getElementById('userSearch') as HTMLInputElement;
+
+// DOM 元素 - Login
+const loginBtn = document.getElementById('loginBtn')!;
+const loginUserIdInput = document.getElementById('loginUserId') as HTMLInputElement;
+const loginPasswordInput = document.getElementById('loginPassword') as HTMLInputElement;
 
 // Tab切换
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -805,13 +811,56 @@ async function searchAndLoadUsers() {
   }
 }
 
+// 登录用户
+async function loginUser() {
+  const userId = parseInt(loginUserIdInput.value.trim());
+  const password = loginPasswordInput.value.trim();
+  
+  if (!userId || userId < 1) {
+    alert('请输入有效的用户ID');
+    return;
+  }
+  
+  if (!password) {
+    alert('请输入密码');
+    return;
+  }
+  
+  loginBtn.textContent = '登录中...';
+  loginBtn.setAttribute('disabled', 'true');
+  
+  try {
+    const result = await userAPI.loginUser(userId, password);
+    
+    showNotification(`✅ 登录成功！用户ID: ${result.user_id}`, 'success');
+    
+    // 重置输入
+    loginUserIdInput.value = '';
+    loginPasswordInput.value = '';
+    
+    // Token 已自动存储在 api.ts 中
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '未知错误';
+    showNotification(`❌ 登录失败: ${message}`, 'error');
+  } finally {
+    loginBtn.textContent = '登录';
+    loginBtn.removeAttribute('disabled');
+  }
+}
+
 // 注册用户
 async function registerUser() {
   const nickname = nicknameInput.value.trim();
   const sex = parseInt(sexSelect.value);
+  const password = registerPasswordInput.value.trim();
   
   if (!nickname) {
     alert('请输入昵称');
+    return;
+  }
+  
+  if (!password) {
+    alert('请输入密码');
     return;
   }
   
@@ -819,13 +868,14 @@ async function registerUser() {
   registerBtn.setAttribute('disabled', 'true');
   
   try {
-    const result = await userAPI.registerUser(nickname, sex);
+    const result = await userAPI.registerUser(nickname, sex, password);
     
-    showNotification(`✅ ${result.message}`, 'success');
+    showNotification(`✅ 注册成功！用户ID: ${result.user_id}，Token 已保存`, 'success');
     
     // 重置输入
     nicknameInput.value = '';
     sexSelect.value = '0';
+    registerPasswordInput.value = '';
     
     // 刷新列表
     await searchAndLoadUsers();
@@ -833,7 +883,7 @@ async function registerUser() {
     const message = error instanceof Error ? error.message : '未知错误';
     showNotification(`❌ 注册用户失败: ${message}`, 'error');
   } finally {
-    registerBtn.textContent = 'Register User';
+    registerBtn.textContent = '注册用户';
     registerBtn.removeAttribute('disabled');
   }
 }
@@ -879,6 +929,7 @@ createBtn.addEventListener('click', createRoom);
 refreshBtn.addEventListener('click', renderRooms);
 
 // User events
+loginBtn.addEventListener('click', loginUser);
 registerBtn.addEventListener('click', registerUser);
 refreshUsersBtn.addEventListener('click', searchAndLoadUsers);
 // 搜索输入时调用接口
@@ -893,7 +944,25 @@ maxSizeInput.addEventListener('keypress', (e) => {
   }
 });
 
+loginUserIdInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    loginUser();
+  }
+});
+
+loginPasswordInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    loginUser();
+  }
+});
+
 nicknameInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    registerUser();
+  }
+});
+
+registerPasswordInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     registerUser();
   }

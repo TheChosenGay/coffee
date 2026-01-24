@@ -1,4 +1,4 @@
-package json_handler
+package logtime
 
 import (
 	"fmt"

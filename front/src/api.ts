@@ -22,9 +22,12 @@ export interface User {
   Birthday: number;
 }
 
-export interface RegisterUserResponse {
-  message: string;
+export interface LoginResponse {
+  user_id: number;
+  token: string;
 }
+
+export interface RegisterUserResponse extends LoginResponse {}
 
 export interface RoomUnit {
   id: number;
@@ -41,6 +44,31 @@ export interface JoinRoomResponse {
 
 export interface QuitRoomResponse {
   message: string;
+}
+
+// Token 管理
+export function setToken(token: string): void {
+  localStorage.setItem('auth_token', token);
+}
+
+export function getToken(): string | null {
+  return localStorage.getItem('auth_token');
+}
+
+export function removeToken(): void {
+  localStorage.removeItem('auth_token');
+}
+
+// 获取带认证头的请求配置
+function getAuthHeaders(): HeadersInit {
+  const token = getToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = token;
+  }
+  return headers;
 }
 
 export class RoomAPI {
@@ -111,11 +139,20 @@ export class RoomAPI {
 }
 
 export class UserAPI {
-  async registerUser(nickname: string, sex: number): Promise<RegisterUserResponse> {
-    const url = `${BASE_URL}/user/register?nickname=${encodeURIComponent(nickname)}&sex=${sex}`;
-    console.log('Registering user:', url);
+  // 注册用户 - POST 请求，包含 password
+  async registerUser(nickname: string, sex: number, password: string): Promise<RegisterUserResponse> {
+    const res = await fetch(`${BASE_URL}/user/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        nickname,
+        sex,
+        password,
+      }),
+    });
     
-    const res = await fetch(url);
     const data = await res.json();
     
     if (!res.ok) {
@@ -123,7 +160,50 @@ export class UserAPI {
       throw new Error(error.error || 'Failed to register user');
     }
     
-    return data as RegisterUserResponse;
+    const response = data as LoginResponse;
+    // 存储 token
+    if (response.token) {
+      setToken(response.token);
+    }
+    
+    return response;
+  }
+
+  // 登录用户 - POST 请求，需要在 Authorization header 中发送 token
+  // 注意：根据后端实现，登录接口需要 JWT token，所以用户必须先注册获得 token
+  async loginUser(userId: number, password: string): Promise<LoginResponse> {
+    // 登录接口需要 token，如果没有 token，提示用户先注册
+    const token = getToken();
+    if (!token) {
+      throw new Error('请先注册获取 Token，然后再登录');
+    }
+    
+    const res = await fetch(`${BASE_URL}/user/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        password,
+      }),
+    });
+    
+    const data = await res.json();
+    
+    if (!res.ok) {
+      const error = data as ErrorResponse;
+      throw new Error(error.error || 'Failed to login user');
+    }
+    
+    const response = data as LoginResponse;
+    // 存储新的 token（如果返回了新的 token）
+    if (response.token) {
+      setToken(response.token);
+    }
+    
+    return response;
   }
 
   async listUsers(): Promise<User[]> {
@@ -151,4 +231,3 @@ export class UserAPI {
     return res.json();
   }
 }
-

@@ -11,9 +11,11 @@ import (
 
 	"github.com/TheChosenGay/coffee/api"
 	"github.com/TheChosenGay/coffee/middleware/auth"
+	"github.com/TheChosenGay/coffee/middleware/logtime"
 	"github.com/TheChosenGay/coffee/service"
 	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/types"
+	"github.com/sirupsen/logrus"
 )
 
 type JsonUserServiceHandler struct {
@@ -26,19 +28,19 @@ func NewJsonUserServiceHandler(svc service.UserService, userStore store.UserStor
 }
 
 func (s *JsonUserServiceHandler) MakeJsonServiceHandler() {
-	http.HandleFunc("/user/register", WithLogTime(s.registerUser))
+	http.HandleFunc("/user/register", logtime.WithLogTime(s.registerUser))
 
 	// login
-	http.HandleFunc("/user/login", WithLogTime(auth.WithJwt(s.userStore)(s.login)))
+	http.HandleFunc("/user/login", logtime.WithLogTime(auth.WithJwt(s.userStore)(s.login)))
 
 	// delete user
-	http.HandleFunc("/user/delete", WithLogTime(s.deleteUser))
+	http.HandleFunc("/user/delete", logtime.WithLogTime(s.deleteUser))
 
 	// list users
-	http.HandleFunc("/user/list", WithLogTime(s.listUsers))
+	http.HandleFunc("/user/list", logtime.WithLogTime(s.listUsers))
 
 	// get user by id
-	http.HandleFunc("/user/get", WithLogTime(s.getUserById))
+	http.HandleFunc("/user/get", logtime.WithLogTime(s.getUserById))
 }
 
 func (s *JsonUserServiceHandler) registerUser(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +54,12 @@ func (s *JsonUserServiceHandler) registerUser(w http.ResponseWriter, r *http.Req
 	nickname := registerInfo.Nickname
 	sex := registerInfo.Sex
 	password := registerInfo.Password
+	logrus.WithFields(logrus.Fields{
+		"requestId": ctx.Value("requestId"),
+		"nickname":  nickname,
+		"sex":       sex,
+		"password":  password,
+	}).Info("register user")
 
 	if nickname == "" {
 		api.WriteToJson(w, http.StatusBadRequest, map[string]string{"error": "nickname is required"})
@@ -136,11 +144,15 @@ func (s *JsonUserServiceHandler) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	loginResponse, err := s.makeLoginResponse(user.UserId, user.Password)
+	logrus.WithFields(logrus.Fields{
+		"requestId":     ctx.Value("requestId"),
+		"user":          user,
+		"loginResponse": loginResponse,
+	}).Info("login user")
 	if err != nil {
 		api.WriteToJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-
 	api.WriteToJson(w, http.StatusOK, loginResponse)
 }
 

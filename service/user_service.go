@@ -7,6 +7,7 @@ import (
 
 	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/types"
+	"github.com/sirupsen/logrus"
 )
 
 type UserService interface {
@@ -58,6 +59,11 @@ func (s *userService) Login(ctx context.Context, loginInfo types.LoginInfo) (typ
 	user, err := s.store.GetUser(ctx, userId)
 
 	if user.Password != password {
+		logrus.WithFields(logrus.Fields{
+			"requestId":           ctx.Value("requestId"),
+			"login Info password": password,
+			"user password":       user.Password,
+		}).Info("invalid password")
 		return types.User{UserId: types.InvalidUserId}, errors.New("invalid password")
 	}
 

@@ -18,7 +18,7 @@ func NewLoginResponse(userId int, token string) LoginResponse {
 }
 
 type RegisterInfo struct {
-	Nickname string `json:nickname`
-	Sex      Sex    `json:sex`
-	Password string `json:password`
+	Nickname string `json:"nickname"`
+	Sex      Sex    `json:"sex"`
+	Password string `json:"password"`
 }

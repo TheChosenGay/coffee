@@ -48,13 +48,13 @@ func (s *gormUserStore) DeleteUser(ctx context.Context, id int) error {
 }
 
 func (s *gormUserStore) GetUser(ctx context.Context, id int) (types.User, error) {
-	result := s.db.Where("user_id = ?", id).First(&UserModel{})
+	var userModel UserModel
+	// 使用 Order("id DESC") 确保获取最新的记录
+	result := s.db.Where("user_id = ?", id).Order("id DESC").First(&userModel)
 	if result.Error != nil {
 		return types.User{UserId: types.InvalidUserId}, result.Error
 	}
-	var user types.User
-	result.Scan(&user)
-	return user, nil
+	return userModel.User, nil
 }
 
 func (s *gormUserStore) ListUser(ctx context.Context) ([]types.User, error) {

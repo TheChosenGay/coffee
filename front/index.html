@@ -36,6 +36,24 @@
         <!-- Users Tab Content -->
         <div class="tab-content active" id="users-tab">
           <div class="section">
+            <h2>🔐 登录</h2>
+            <div class="create-form">
+              <input 
+                type="number" 
+                id="loginUserId" 
+                placeholder="用户ID" 
+                min="1"
+              />
+              <input 
+                type="password" 
+                id="loginPassword" 
+                placeholder="密码" 
+              />
+              <button id="loginBtn">登录</button>
+            </div>
+          </div>
+          
+          <div class="section">
             <h2>👤 注册用户</h2>
             <div class="create-form">
               <input 
@@ -48,6 +66,11 @@
                 <option value="0">男</option>
                 <option value="1">女</option>
               </select>
+              <input 
+                type="password" 
+                id="registerPassword" 
+                placeholder="密码" 
+              />
               <button id="registerBtn">注册用户</button>
             </div>
           </div>

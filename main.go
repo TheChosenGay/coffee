@@ -35,20 +35,20 @@ func main() {
 	userIdService := service.NewUserIdService()
 	userService := service.NewUserService(cachedUserStore, userIdService)
 	// use one coffee servive for both json and grpc
-	go runJsonServer(cs, roomStore, userStore, userService, onlineRoomService, onlineUserService)
+	go runJsonServer(cs, roomStore, userStore, cachedUserStore, userService, onlineRoomService, onlineUserService)
 	go runGrpcServer(cs)
 	go runUserConnServer(cachedUserStore, onlineUserService, onlineRoomService)
 	select {}
 }
 
 // start json over http server
-func runJsonServer(cs service.CoffeeService, roomStore store.RoomStore, userStore store.UserStore, userService service.UserService, onlineRoomService chat.OnlineRoomService, onlineUserService chat.OnlineUserService) {
+func runJsonServer(cs service.CoffeeService, roomStore store.RoomStore, userStore store.UserStore, cachedUserStore store.UserStore, userService service.UserService, onlineRoomService chat.OnlineRoomService, onlineUserService chat.OnlineUserService) {
 	csvc := json_handler.NewJsonCoffeeServiceHandler(cs)
 	roomIdService := service.NewRoomIdService()
 
 	rs := manage.NewRoomService(roomStore, userStore, roomIdService, onlineRoomService, onlineUserService)
 	rsvc := json_handler.NewJsonRoomServiceHandler(rs)
-	usvc := json_handler.NewJsonUserServiceHandler(userService, userStore)
+	usvc := json_handler.NewJsonUserServiceHandler(userService, cachedUserStore)
 	jsonServer := api.NewJsonServer(":8080")
 
 	jsonServer.RegisterHandler(reflect.TypeOf(csvc).Elem().Name(), csvc)

@@ -41,4 +41,8 @@ dev-all:
 	@echo "Starting backend and frontend..."
 	@make run & make front-dev
 
-.PHONY: build test clean proto client-build front-install front-dev front-build dev-all
+# Clear Redis cache
+clear-redis:
+	@go run ./cmd/clear_redis/main.go
+
+.PHONY: build test clean proto client-build front-install front-dev front-build dev-all clear-redis

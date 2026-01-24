@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/TheChosenGay/coffee/api"
+	"github.com/TheChosenGay/coffee/middleware/logtime"
 	"github.com/TheChosenGay/coffee/service"
 )
 
@@ -22,22 +23,22 @@ func NewJsonRoomServiceHandler(svc service.RoomService) api.JsonServerHandler {
 
 func (s *JsonRoomServiceHandler) MakeJsonServiceHandler() {
 	// create room with max unit size
-	http.HandleFunc("/room/create", WithLogTime(s.createRoom))
+	http.HandleFunc("/room/create", logtime.WithLogTime(s.createRoom))
 
 	// delete room
-	http.HandleFunc("/room/delete", WithLogTime(s.deleteRoom))
+	http.HandleFunc("/room/delete", logtime.WithLogTime(s.deleteRoom))
 
 	// list rooms
-	http.HandleFunc("/room/list", WithLogTime(s.listRooms))
+	http.HandleFunc("/room/list", logtime.WithLogTime(s.listRooms))
 
 	// join room
-	http.HandleFunc("/room/join", WithLogTime(s.joinRoom))
+	http.HandleFunc("/room/join", logtime.WithLogTime(s.joinRoom))
 
 	// quit room
-	http.HandleFunc("/room/quit", WithLogTime(s.quitRoom))
+	http.HandleFunc("/room/quit", logtime.WithLogTime(s.quitRoom))
 
 	// get room units
-	http.HandleFunc("/room/get_units", WithLogTime(s.getRoomUnits))
+	http.HandleFunc("/room/get_units", logtime.WithLogTime(s.getRoomUnits))
 }
 
 func (s *JsonRoomServiceHandler) createRoom(w http.ResponseWriter, r *http.Request) {

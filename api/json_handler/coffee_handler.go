@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/TheChosenGay/coffee/api"
+	"github.com/TheChosenGay/coffee/middleware/logtime"
 	"github.com/TheChosenGay/coffee/service"
 	"github.com/TheChosenGay/coffee/types"
 )
@@ -23,10 +24,10 @@ func NewJsonCoffeeServiceHandler(svc service.CoffeeService) api.JsonServerHandle
 
 func (s *JsonCoffeeServiceHandler) MakeJsonServiceHandler() {
 	// list coffees
-	http.HandleFunc("/coffee/list", WithLogTime(s.listCoffees))
+	http.HandleFunc("/coffee/list", logtime.WithLogTime(s.listCoffees))
 
 	// get coffee by id
-	http.HandleFunc("/coffee/get", WithLogTime(s.getCoffeeById))
+	http.HandleFunc("/coffee/get", logtime.WithLogTime(s.getCoffeeById))
 }
 
 func (s *JsonCoffeeServiceHandler) listCoffees(w http.ResponseWriter, r *http.Request) {

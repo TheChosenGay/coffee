@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/types"
@@ -25,11 +26,13 @@ func WithJwt(userStore store.UserStore) MiddlewareFunc {
 				slog.Error("user authorization failed", "error", err)
 				return
 			}
-			userId, ok := claims["userId"].(int)
+			// JWT claims 中的数字会被解析为 float64，需要转换
+			userIdFloat, ok := claims["userId"].(float64)
 			if !ok {
 				slog.Error("user authorization failed", "error", errors.New("invalid user id"))
 				return
 			}
+			userId := int(userIdFloat)
 			password, ok := claims["password"].(string)
 			if !ok {
 				slog.Error("user authorization failed", "error", errors.New("invalid password"))
@@ -41,7 +44,7 @@ func WithJwt(userStore store.UserStore) MiddlewareFunc {
 				return
 			}
 			if user.UserId == types.InvalidUserId || user.Password != password {
-				slog.Error("user authorization failed", "error", errors.New("invalid user or password"))
+				slog.Error("user authorization failed, userId: ", strconv.Itoa(user.UserId), "user.Password: ", user.Password, "password: ", password, "error", errors.New("invalid user or password"))
 				return
 			}
 

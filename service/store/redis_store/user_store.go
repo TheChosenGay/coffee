@@ -61,3 +61,19 @@ func (s *RedisUserStore) ListUser(ctx context.Context) ([]types.User, error) {
 func (s *RedisUserStore) getKey(userId int) string {
 	return fmt.Sprintf("%s%d", UserRedisKeyPrefix, userId)
 }
+
+// ClearAllUsers 清除所有用户缓存数据
+func (s *RedisUserStore) ClearAllUsers(ctx context.Context) error {
+	// 使用 SCAN 命令查找所有匹配的键
+	iter := s.client.Scan(ctx, 0, UserRedisKeyPrefix+"*", 0).Iterator()
+	for iter.Next(ctx) {
+		key := iter.Val()
+		if err := s.client.Del(ctx, key).Err(); err != nil {
+			return fmt.Errorf("failed to delete key %s: %w", key, err)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("failed to scan keys: %w", err)
+	}
+	return nil
+}
