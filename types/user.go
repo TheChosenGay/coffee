@@ -19,16 +19,6 @@ type User struct {
 	Password string
 }
 
-type LoginInfo struct {
-	UserId   int
-	Password string
-}
-
-type LoginResponse struct {
-	UserId int
-	Token  string
-}
-
 func (u User) IsValid() bool {
 	return u.UserId != InvalidUserId
 }

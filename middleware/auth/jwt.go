@@ -1,42 +1,79 @@
 package auth
 
 import (
+	"errors"
 	"log"
 	"log/slog"
 	"net/http"
 
+	"github.com/TheChosenGay/coffee/service/store"
+	"github.com/TheChosenGay/coffee/types"
 	jwt "github.com/golang-jwt/jwt/v5"
 )
 
 var hmacSampleSecret = []byte("my_secret_key")
 
-func WithJwt(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 取出jwt token
-		tokenString := r.Header.Get("Authorization")
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
-			return hmacSampleSecret, nil
-		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
-		if err != nil {
-			log.Fatal(err)
-		}
+type MiddlewareFunc func(next http.HandlerFunc) http.HandlerFunc
 
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			slog.Info("user authenticated", "userId", claims["userId"])
-		} else {
-			slog.Error("user authorization failed", "error", err)
-			//  goto login page
-			return
-		}
-		next(w, r)
-	})
+func WithJwt(userStore store.UserStore) MiddlewareFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// 取出jwt token
+			tokenString := r.Header.Get("Authorization")
+			claims, err := parseToken(tokenString)
+			if err != nil {
+				slog.Error("user authorization failed", "error", err)
+				return
+			}
+			userId, ok := claims["userId"].(int)
+			if !ok {
+				slog.Error("user authorization failed", "error", errors.New("invalid user id"))
+				return
+			}
+			password, ok := claims["password"].(string)
+			if !ok {
+				slog.Error("user authorization failed", "error", errors.New("invalid password"))
+				return
+			}
+			user, err := userStore.GetUser(r.Context(), userId)
+			if err != nil {
+				slog.Error("user authorization failed", "error", err)
+				return
+			}
+			if user.UserId == types.InvalidUserId || user.Password != password {
+				slog.Error("user authorization failed", "error", errors.New("invalid user or password"))
+				return
+			}
+
+			next(w, r)
+		})
+	}
 }
 
-func CreateToken(userId int) (string, error) {
+func parseToken(tokenString string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		return hmacSampleSecret, nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		slog.Info("user authenticated", "userId", claims["userId"])
+		return claims, nil
+	} else {
+		slog.Error("user authorization failed", "error", err)
+		//  goto login page
+		return nil, errors.New("user authorization failed")
+	}
+}
+
+func CreateToken(userId int, password string) (string, error) {
 	// Create a new token object, specifying signing method and the claims
 	// you would like it to contain.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userId": userId,
+		"userId":   userId,
+		"password": password,
 	})
 
 	// Sign and get the complete encoded token as a string using the secret

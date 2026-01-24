@@ -48,7 +48,7 @@ func runJsonServer(cs service.CoffeeService, roomStore store.RoomStore, userStor
 
 	rs := manage.NewRoomService(roomStore, userStore, roomIdService, onlineRoomService, onlineUserService)
 	rsvc := json_handler.NewJsonRoomServiceHandler(rs)
-	usvc := json_handler.NewJsonUserServiceHandler(userService)
+	usvc := json_handler.NewJsonUserServiceHandler(userService, userStore)
 	jsonServer := api.NewJsonServer(":8080")
 
 	jsonServer.RegisterHandler(reflect.TypeOf(csvc).Elem().Name(), csvc)

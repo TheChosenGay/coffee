@@ -12,22 +12,24 @@ import (
 	"github.com/TheChosenGay/coffee/api"
 	"github.com/TheChosenGay/coffee/middleware/auth"
 	"github.com/TheChosenGay/coffee/service"
+	"github.com/TheChosenGay/coffee/service/store"
 	"github.com/TheChosenGay/coffee/types"
 )
 
 type JsonUserServiceHandler struct {
-	svc service.UserService
+	svc       service.UserService
+	userStore store.UserStore
 }
 
-func NewJsonUserServiceHandler(svc service.UserService) api.JsonServerHandler {
-	return &JsonUserServiceHandler{svc: svc}
+func NewJsonUserServiceHandler(svc service.UserService, userStore store.UserStore) api.JsonServerHandler {
+	return &JsonUserServiceHandler{svc: svc, userStore: userStore}
 }
 
 func (s *JsonUserServiceHandler) MakeJsonServiceHandler() {
 	http.HandleFunc("/user/register", WithLogTime(s.registerUser))
 
 	// login
-	http.HandleFunc("/user/login", WithLogTime(s.log))
+	http.HandleFunc("/user/login", WithLogTime(auth.WithJwt(s.userStore)(s.login)))
 
 	// delete user
 	http.HandleFunc("/user/delete", WithLogTime(s.deleteUser))
@@ -62,7 +64,7 @@ func (s *JsonUserServiceHandler) registerUser(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	loginResponse, err := s.makeLoginResponse(userId)
+	loginResponse, err := s.makeLoginResponse(userId, password)
 	if err != nil {
 		api.WriteToJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -133,7 +135,7 @@ func (s *JsonUserServiceHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	loginResponse, err := s.makeLoginResponse(user.UserId)
+	loginResponse, err := s.makeLoginResponse(user.UserId, user.Password)
 	if err != nil {
 		api.WriteToJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -142,9 +144,9 @@ func (s *JsonUserServiceHandler) login(w http.ResponseWriter, r *http.Request) {
 	api.WriteToJson(w, http.StatusOK, loginResponse)
 }
 
-func (s *JsonUserServiceHandler) makeLoginResponse(userId int) (*types.LoginResponse, error) {
+func (s *JsonUserServiceHandler) makeLoginResponse(userId int, password string) (*types.LoginResponse, error) {
 
-	token, err := auth.CreateToken(userId)
+	token, err := auth.CreateToken(userId, password)
 	if err != nil {
 		return nil, err
 	}

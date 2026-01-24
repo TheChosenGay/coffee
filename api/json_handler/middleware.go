@@ -11,9 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type HttpHandlerFunc func(w http.ResponseWriter, r *http.Request)
-
-func WithLogTime(handler HttpHandlerFunc) HttpHandlerFunc {
+func WithLogTime(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		handler(w, r)
